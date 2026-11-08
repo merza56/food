@@ -3770,31 +3770,37 @@ input[type="range"].clean-slider::-webkit-slider-thumb {
 .iphone-frame {
   display: flex !important;
   flex-direction: column !important;
+  justify-content: space-between !important;
 }
 
 .top-bar.home-top-header {
   flex-shrink: 0 !important;
   background: var(--bg-app) !important;
-  z-index: 30 !important;
+  border-bottom: 1px solid var(--line-soft) !important;
+  z-index: 50 !important;
 }
 
 .main-scroll {
   flex: 1 1 0% !important;
   min-height: 0 !important;
-  padding: 6px 16px 12px !important;
+  padding: 8px 16px 12px !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
 }
 
-/* Dock sits as a solid flex footer instead of overlapping & hiding bottom content */
+/* Solid flex footer so bottom content never fades or hides behind the nav bar */
 .tabbar-dock {
   position: relative !important;
   bottom: auto !important;
   left: auto !important;
   right: auto !important;
   flex-shrink: 0 !important;
+  width: 100% !important;
   background: var(--bg-app) !important;
-  padding: 4px 16px 12px !important;
+  border-top: 1px solid var(--line-soft) !important;
+  padding: 6px 16px 12px !important;
   pointer-events: auto !important;
-  z-index: 40 !important;
+  z-index: 50 !important;
 }
 
 #tab-today.screen.active {
@@ -3809,13 +3815,14 @@ input[type="range"].clean-slider::-webkit-slider-thumb {
 #tab-today .hero-card {
   flex: 1 1 0% !important;
   min-height: 0 !important;
-  padding: 16px 16px 16px !important;
+  padding: 14px 16px 14px !important;
 }
 
 #tab-today .fire-hearth-stage,
 #tab-today .fire-canvas-area {
   flex: 1 1 0% !important;
   min-height: 120px !important;
+  max-height: 240px !important;
   height: 100% !important;
 }
 
@@ -3823,55 +3830,95 @@ input[type="range"].clean-slider::-webkit-slider-thumb {
   flex-shrink: 0 !important;
 }
 
+#tab-analytics.screen.active,
+#tab-xp.screen.active,
+#tab-profile.screen.active {
+  height: auto !important;
+  padding-bottom: 14px !important;
+}
+
 @media (max-width: 520px) {
   html,
-  body,
-  .app-stage {
-    position: fixed !important;
-    inset: 0 !important;
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
     width: 100% !important;
-    height: 100% !important;
+    height: 100dvh !important;
+    min-height: -webkit-fill-available !important;
     overflow: hidden !important;
     background: var(--bg-app) !important;
+    position: relative !important;
+  }
+
+  /* Stretch from physical top:0 to physical bottom:0 without align-items:center shifting upward */
+  .app-stage {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    overflow: hidden !important;
+    background: var(--bg-app) !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .iphone-frame {
     width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 0% !important;
     height: 100% !important;
-    max-height: 100% !important;
+    max-height: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    background: var(--bg-app) !important;
+    overflow: hidden !important;
   }
 
-  /* Respect iPhone Dynamic Island & Status Bar (env(safe-area-inset-top)) */
+  /* Guaranteed clearance below iPhone Dynamic Island, clock (7:09), and iOS 26 top scrim */
   .top-bar.home-top-header {
     height: auto !important;
-    min-height: calc(env(safe-area-inset-top, 47px) + 46px) !important;
-    padding: calc(env(safe-area-inset-top, 47px) + 6px) 16px 8px !important;
+    padding-top: max(54px, calc(env(safe-area-inset-top, 0px) + 10px)) !important;
+    padding-bottom: 9px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    min-height: calc(max(54px, env(safe-area-inset-top, 0px) + 10px) + 42px) !important;
     background: var(--bg-app) !important;
     border-bottom: 1px solid var(--line-soft) !important;
   }
 
   .toast-pill {
-    top: calc(env(safe-area-inset-top, 47px) + 8px) !important;
+    top: calc(max(54px, env(safe-area-inset-top, 0px) + 10px) + 4px) !important;
   }
 
-  /* Respect iPhone Home Indicator at Bottom (env(safe-area-inset-bottom)) */
+  /* Clean bottom safe-area clearance for Home Indicator without huge empty gap */
   .tabbar-dock {
-    padding: 6px 16px max(12px, calc(env(safe-area-inset-bottom, 20px) + 4px)) !important;
+    padding-top: 7px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 4px)) !important;
     background: var(--bg-app) !important;
+    border-top: 1px solid var(--line-soft) !important;
   }
 
   .sheet-box,
   .sheet-box.food-sheet-clean,
   .sheet-box.craving-sheet-clean,
   .sheet-box.settings-sheet-clean {
-    padding-bottom: max(22px, calc(env(safe-area-inset-bottom, 20px) + 12px)) !important;
+    padding-bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 12px)) !important;
   }
 
   #tab-today .big-action-btn.clean-outline-btn {
-    height: 94px !important;
+    height: 92px !important;
   }
 }
+
 
 

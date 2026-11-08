@@ -242,9 +242,33 @@ const App = {
       }
     }
 
+    this.setupIosStandaloneViewportFix();
+
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!window.__khiffaReloading) {
+          window.__khiffaReloading = true;
+          window.location.reload();
+        }
+      });
+      navigator.serviceWorker.register('./sw.js?v=4.0').then((reg) => {
+        if (reg && typeof reg.update === 'function') reg.update().catch(() => {});
+      }).catch(() => {});
     }
+  },
+
+  setupIosStandaloneViewportFix() {
+    const resetWindowScroll = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0);
+      }
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    };
+    resetWindowScroll();
+    window.addEventListener('resize', resetWindowScroll, { passive: true });
+    window.addEventListener('orientationchange', () => setTimeout(resetWindowScroll, 80), { passive: true });
+    window.addEventListener('focusout', () => setTimeout(resetWindowScroll, 60), { passive: true });
   },
 
   checkFirstTimeWelcome() {
@@ -534,28 +558,27 @@ const App = {
     if (iconEl) iconEl.classList.add('spin-anim');
     if (btnEl) btnEl.disabled = true;
     if (statusEl) {
-      statusEl.textContent = 'جاري الاتصال والتحقق من آخر التحديثات...';
+      statusEl.textContent = 'جاري مسح الكاش القديم وتحديث ملفات التطبيق...';
       statusEl.style.color = 'var(--gold)';
     }
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((regs) => {
-        regs.forEach((reg) => {
-          if (reg && typeof reg.update === 'function') reg.update().catch(() => {});
-        });
-      }).catch(() => {});
-    }
+    const clearAndReload = async () => {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+      } catch (e) {}
+      setTimeout(() => {
+        window.location.reload();
+      }, 350);
+    };
 
-    setTimeout(() => {
-      if (iconEl) iconEl.classList.remove('spin-anim');
-      if (btnEl) btnEl.disabled = false;
-      if (statusEl) {
-        statusEl.textContent = 'أنت تعمل على أحدث إصدار (v2.7) ✓';
-        statusEl.style.color = 'var(--sage)';
-      }
-      this.playFeedback('success');
-      this.showToast('تطبيق خِفَّة محدّث بالكامل لآخر إصدار (v2.7) ✨', '🔄');
-    }, 900);
+    clearAndReload();
   },
 
   switchTab(tabId) {
@@ -2162,35 +2185,37 @@ const App = {
     const colW = w / paddedDays.length;
     const barW = 28;
 
+    const baselineY = padTop + chartH;
     const barsSvg = paddedDays.map((d, idx) => {
       const cx = idx * colW + colW / 2;
       const bx = cx - barW / 2;
       const isToday = idx === paddedDays.length - 1;
       const showGap = d.active !== false || isToday;
       const yConsumed = yFor(d.consumed);
-      const barH = d.isPlaceholder ? 8 : Math.max(14, padTop + chartH - yConsumed);
+      const barH = d.isPlaceholder ? 8 : Math.max(14, baselineY - yConsumed);
+      const barTopY = baselineY - barH;
       const deficitVal = showGap ? Math.max(0, tdee - d.consumed) : 0;
-      const deficitH = showGap ? Math.max(0, yConsumed - yTdee) : 0;
+      const deficitH = showGap ? Math.max(0, barTopY - yTdee) : 0;
       const isUnderTarget = d.consumed <= target;
       const barColor = d.isPlaceholder ? 'var(--line-med)' : isUnderTarget ? 'var(--sage)' : 'var(--gold)';
       const midGapY = yTdee + deficitH / 2 + 3;
 
       return `
-        <g opacity="${d.isPlaceholder ? '0.45' : '1'}">
+        <g opacity="${d.isPlaceholder ? '0.52' : '1'}">
           <!-- Highlighted Deficit Gap Pillar (The Fat Burn Zone) -->
-          <rect x="${bx}" y="${yTdee}" width="${barW}" height="${d.isPlaceholder ? Math.max(0, padTop + chartH - 8 - yTdee) : deficitH}" rx="5" fill="${d.isPlaceholder ? 'var(--bg-subtle)' : 'var(--sage-light)'}" stroke="${d.isPlaceholder ? 'var(--line-soft)' : 'var(--sage-border)'}" stroke-width="1" stroke-dasharray="2 2" />
+          <rect x="${bx}" y="${yTdee}" width="${barW}" height="${d.isPlaceholder ? Math.max(0, barTopY - yTdee) : deficitH}" rx="5" fill="${d.isPlaceholder ? 'var(--bg-subtle)' : 'var(--sage-light)'}" stroke="${d.isPlaceholder ? 'var(--line-soft)' : 'var(--sage-border)'}" stroke-width="1" stroke-dasharray="2 2" />
           ${!d.isPlaceholder && deficitH > 22 ? `
             <text x="${cx}" y="${midGapY}" text-anchor="middle" direction="ltr" unicode-bidi="embed" font-size="8.5" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" fill="var(--sage)">-${deficitVal}</text>
           ` : ''}
 
-          <!-- Consumed Calories Solid Pillar -->
-          <rect x="${bx}" y="${d.isPlaceholder ? padTop + chartH - 8 : yConsumed}" width="${barW}" height="${barH}" rx="4" fill="${barColor}" />
+          <!-- Consumed Calories Solid Pillar (anchored above baseline so it never overlaps the day label) -->
+          <rect x="${bx}" y="${barTopY}" width="${barW}" height="${barH}" rx="4" fill="${barColor}" />
           ${!d.isPlaceholder ? `
-            <text x="${cx}" y="${padTop + chartH - 4}" text-anchor="middle" font-size="8" font-family="Plus Jakarta Sans, sans-serif" font-weight="700" fill="#FFFFFF">${d.consumed}</text>
+            <text x="${cx}" y="${barTopY + barH - 3.5}" text-anchor="middle" font-size="8" font-family="Plus Jakarta Sans, sans-serif" font-weight="700" fill="#FFFFFF">${d.consumed}</text>
           ` : ''}
 
           <!-- Day Name -->
-          <text x="${cx}" y="${h - 7}" text-anchor="middle" font-size="9" font-family="Readex Pro, sans-serif" font-weight="${isToday ? '800' : '600'}" fill="${isToday ? 'var(--sage)' : 'var(--ink-3)'}">${d.arDay}</text>
+          <text x="${cx}" y="${h - 6}" text-anchor="middle" font-size="9" font-family="Readex Pro, sans-serif" font-weight="${isToday ? '800' : '600'}" fill="${isToday ? 'var(--sage)' : 'var(--ink-3)'}">${d.arDay}</text>
         </g>
       `;
     }).join('');
