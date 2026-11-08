@@ -559,6 +559,11 @@ const App = {
   },
 
   switchTab(tabId) {
+    if (this.activeTab === tabId && document.getElementById(`tab-${tabId}`)?.classList.contains('active')) {
+      const viewport = document.getElementById('appViewport');
+      if (viewport) viewport.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     this.playFeedback('tap');
     this.activeTab = tabId;
     document.querySelectorAll('.screen').forEach((el) => el.classList.remove('active'));
@@ -566,7 +571,11 @@ const App = {
 
     const targetScreen = document.getElementById(`tab-${tabId}`);
     const targetNav = document.getElementById(`nav-${tabId}`);
-    if (targetScreen) targetScreen.classList.add('active');
+    if (targetScreen) {
+      targetScreen.classList.remove('active');
+      void targetScreen.offsetWidth;
+      targetScreen.classList.add('active');
+    }
     if (targetNav) targetNav.classList.add('active');
 
     const viewport = document.getElementById('appViewport');
