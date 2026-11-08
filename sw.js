@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khiffa-ios-v3.2-smooth-header';
+const CACHE_NAME = 'khiffa-ios-v3.6-pwa-safearea';
 const ASSETS = [
   './',
   './index.html',

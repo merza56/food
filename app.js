@@ -698,13 +698,27 @@ const App = {
   // (تكبر وتتوهج كلما قل الأكل، وتصغر ويخفت توهجها كلما أكلت سعرات أكثر)
   // ==========================================================================
   computeFlamePower(consumedKcal, targetKcal, tdee) {
+    // Stronger, clearer reduction as calories increase:
+    // 0 kcal -> 1.00 (100% roaring golden-white fire)
+    // 50% of target (975 kcal) -> 0.54 (medium warm coral-orange fire)
+    // 85% of target (1650 kcal) -> 0.28 (small deep crimson-ruby flame)
+    // 100% of target (1950 kcal) -> 0.20 (tiny low ember)
+    // At or above TDEE (2950 kcal) -> 0.11 (fading ash-ember + smoke)
     if (consumedKcal <= 0) return 1.0;
     if (consumedKcal <= targetKcal) {
       const ratio = consumedKcal / Math.max(1, targetKcal);
-      return +(1.0 - ratio * 0.56).toFixed(2);
+      return +(1.0 - Math.pow(ratio, 0.92) * 0.80).toFixed(2);
     }
     const overRatio = Math.min(1, (consumedKcal - targetKcal) / Math.max(1, tdee - targetKcal));
-    return +(0.44 - overRatio * 0.30).toFixed(2);
+    return +(0.20 - overRatio * 0.09).toFixed(2);
+  },
+
+  cycleFlameStagePreview() {
+    const stages = ['actual', 'mid', 'high', 'over', 'fasting'];
+    const current = this.firePreviewMode || 'actual';
+    const nextIdx = (stages.indexOf(current) + 1) % stages.length;
+    const nextMode = stages[nextIdx];
+    this.previewFireIntake(nextMode);
   },
 
   updateFireHudAndTarget(consumedKcal, targetKcal, tdee, modeKey = 'actual') {
@@ -721,17 +735,23 @@ const App = {
     const ringCaption = document.getElementById('ringCenterCaption');
     const ringBig = document.getElementById('ringRemainingKcal');
     const ringSub = document.getElementById('ringSubStatus');
-    const ambientEl = document.getElementById('fireAmbientGlow');
-
-    if (ambientEl) {
-      ambientEl.style.opacity = (0.10 + Math.pow(power, 1.4) * 0.70).toFixed(2);
-      ambientEl.style.transform = `scale(${(0.55 + power * 0.55).toFixed(2)})`;
-    }
 
     if (remainingToTarget >= 0) {
-      if (badge) badge.className = 'zone-pill';
-      if (badgeText) badgeText.textContent = power >= 0.7 ? 'شعلة الحرق في أوج توهجها!' : 'منطقة حرق الدهون النشطة';
-      if (ringCaption) ringCaption.textContent = modeKey === 'actual' ? 'المتبقي من هدف اليوم' : `معاينة: لو أكلت ${consumedKcal.toLocaleString()} سعرة`;
+      if (badge) badge.className = power >= 0.45 ? 'zone-pill' : 'zone-pill warn';
+      if (badgeText) {
+        if (power >= 0.78) {
+          badgeText.textContent = 'شعلة الحرق في أوج توهجها! (ذهبية)';
+        } else if (power >= 0.45) {
+          badgeText.textContent = 'حرق دهون متوسط (برتقالية دافئة)';
+        } else {
+          badgeText.textContent = 'هدأت الشعلة لقرب سقف الهدف (ياقوتية)';
+        }
+      }
+      if (ringCaption) {
+        ringCaption.textContent = modeKey === 'actual'
+          ? 'المتبقي من هدف اليوم'
+          : `معاينة الشعلة: لو أكلت ${consumedKcal.toLocaleString()} سعرة`;
+      }
       if (ringBig) ringBig.textContent = remainingToTarget.toLocaleString();
       if (ringSub) {
         ringSub.textContent = 'سعرة مسموحة';
@@ -739,8 +759,8 @@ const App = {
       }
     } else if (consumedKcal <= tdee) {
       if (badge) badge.className = 'zone-pill warn';
-      if (badgeText) badgeText.textContent = 'الشعلة صغرت — اقتربت من سقف الحرق';
-      if (ringCaption) ringCaption.textContent = `معاينة: أكلت ${consumedKcal.toLocaleString()} سعرة`;
+      if (badgeText) badgeText.textContent = 'جمرة خافتة — تجاوزت الهدف اليومي';
+      if (ringCaption) ringCaption.textContent = `معاينة: لو أكلت ${consumedKcal.toLocaleString()} سعرة`;
       if (ringBig) ringBig.textContent = netDeficit.toLocaleString();
       if (ringSub) {
         ringSub.textContent = 'عجز متبقٍ ضعيف';
@@ -766,24 +786,24 @@ const App = {
     let simConsumed = m.consumedKcal;
 
     if (mode === 'fasting') {
-      simConsumed = 200;
-    } else if (mode === 'actual') {
+      simConsumed = 0;
+    } else if (mode === 'mid') {
+      simConsumed = Math.round(m.dailyTargetKcal * 0.50); // ~975 kcal
+    } else if (mode === 'high') {
+      simConsumed = Math.round(m.dailyTargetKcal * 0.85); // ~1660 kcal
+    } else if (mode === 'heavy' || mode === 'over') {
+      simConsumed = m.tdee + 150; // ~3100 kcal
+    } else {
       simConsumed = m.consumedKcal;
-    } else if (mode === 'heavy') {
-      simConsumed = Math.round(m.dailyTargetKcal * 1.15); // ~2240 kcal
-    } else if (mode === 'over') {
-      simConsumed = m.tdee + 250; // ~3200 kcal
     }
 
     this.updateFireHudAndTarget(simConsumed, m.dailyTargetKcal, m.tdee, mode);
 
     if (this.fireEngine) {
-      // Immediately reflect the new flame size & trim excess sparks when shrinking
-      this.fireEngine.currentPower = this.fireEngine.targetPower;
-      if (this.fireEngine.targetPower < 0.45) {
-        this.fireEngine.sparks = this.fireEngine.sparks.slice(0, 4);
+      if (this.fireEngine.targetPower < 0.40) {
+        this.fireEngine.sparks = this.fireEngine.sparks.slice(0, 3);
       } else if (this.fireEngine.spawnBurst) {
-        this.fireEngine.spawnBurst(14);
+        this.fireEngine.spawnBurst(10);
       }
     }
   },
@@ -796,16 +816,103 @@ const App = {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Helper: Smooth RGB hex color interpolation so flame changes color as calories increase
+    const hexToRgb = (hex) => {
+      const clean = hex.replace('#', '');
+      const num = parseInt(clean, 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    };
+    const lerpRgb = (c1, c2, t) => {
+      const clamped = Math.max(0, Math.min(1, t));
+      const a = hexToRgb(c1);
+      const b = hexToRgb(c2);
+      const r = Math.round(a[0] + (b[0] - a[0]) * clamped);
+      const g = Math.round(a[1] + (b[1] - a[1]) * clamped);
+      const bl = Math.round(a[2] + (b[2] - a[2]) * clamped);
+      return `rgb(${r}, ${g}, ${bl})`;
+    };
+
+    // Returns dynamic flame palette based on current burn power `p` (1.0 = 0 kcal eaten -> 0.12 = over TDEE)
+    const getDynamicFlamePalette = (p) => {
+      if (p >= 0.65) {
+        // High Burn (0% - 40% calories eaten): Golden-White Supercharged Flame -> Classic Warm Orange
+        const t = (1.0 - Math.min(1.0, p)) / 0.35;
+        return {
+          l1Bot: lerpRgb('#EA580C', '#DC2626', t),
+          l1Mid: lerpRgb('#F97316', '#EA580C', t),
+          l1Top: lerpRgb('#FBBF24', '#F97316', t),
+          l1Glow: 'rgba(249, 115, 22, 0.32)',
+          l2Bot: lerpRgb('#F59E0B', '#EA580C', t),
+          l2Mid: lerpRgb('#FACC15', '#F59E0B', t),
+          l2Top: lerpRgb('#FEF08A', '#FBBF24', t),
+          l2Glow: 'rgba(245, 158, 11, 0.30)',
+          l3Bot: lerpRgb('#FACC15', '#F59E0B', t),
+          l3Mid: lerpRgb('#FEF08A', '#FACC15', t),
+          l3Top: lerpRgb('#FFFFFF', '#FEF08A', t),
+          l3Glow: 'rgba(250, 204, 21, 0.34)',
+          l4Bot: '#FEF08A',
+          l4Mid: '#FEF9C3',
+          l4Top: '#FFFFFF',
+          haloRgb: '251, 146, 60',
+          haloInnerRgb: '253, 224, 71'
+        };
+      }
+      if (p >= 0.34) {
+        // Medium to High Calorie Intake (40% - 80% eaten): Warm Orange -> Deep Sunset Crimson/Ruby
+        const t = (0.65 - p) / 0.31;
+        return {
+          l1Bot: lerpRgb('#DC2626', '#7F1D1D', t),
+          l1Mid: lerpRgb('#EA580C', '#991B1B', t),
+          l1Top: lerpRgb('#F97316', '#C2410C', t),
+          l1Glow: `rgba(220, 38, 38, ${(0.30 - t * 0.10).toFixed(2)})`,
+          l2Bot: lerpRgb('#EA580C', '#9A3412', t),
+          l2Mid: lerpRgb('#F59E0B', '#B45309', t),
+          l2Top: lerpRgb('#FBBF24', '#D97706', t),
+          l2Glow: `rgba(217, 119, 6, ${(0.28 - t * 0.10).toFixed(2)})`,
+          l3Bot: lerpRgb('#F59E0B', '#B45309', t),
+          l3Mid: lerpRgb('#FACC15', '#D97706', t),
+          l3Top: lerpRgb('#FEF08A', '#FBBF24', t),
+          l3Glow: 'rgba(245, 158, 11, 0.22)',
+          l4Bot: lerpRgb('#FEF08A', '#FDE047', t),
+          l4Mid: lerpRgb('#FEF9C3', '#FEF08A', t),
+          l4Top: lerpRgb('#FFFFFF', '#FEF9C3', t),
+          haloRgb: `${Math.round(251 - t * 65)}, ${Math.round(146 - t * 95)}, ${Math.round(60 - t * 20)}`,
+          haloInnerRgb: `${Math.round(253 - t * 60)}, ${Math.round(224 - t * 120)}, 71`
+        };
+      }
+      // Near or Over Calorie Limit (80% - 100%+ eaten): Deep Ruby -> Dim Ashen Burgundy Ember
+      const t = (0.34 - Math.max(0.11, p)) / 0.23;
+      return {
+        l1Bot: lerpRgb('#7F1D1D', '#451A1A', t),
+        l1Mid: lerpRgb('#991B1B', '#6B2130', t),
+        l1Top: lerpRgb('#C2410C', '#881337', t),
+        l1Glow: 'rgba(153, 27, 27, 0.16)',
+        l2Bot: lerpRgb('#9A3412', '#5C2415', t),
+        l2Mid: lerpRgb('#B45309', '#7C2D12', t),
+        l2Top: lerpRgb('#D97706', '#9A3412', t),
+        l2Glow: 'rgba(180, 83, 9, 0.14)',
+        l3Bot: lerpRgb('#B45309', '#7C2D12', t),
+        l3Mid: lerpRgb('#D97706', '#9A3412', t),
+        l3Top: lerpRgb('#FBBF24', '#C2410C', t),
+        l3Glow: 'rgba(180, 83, 9, 0.12)',
+        l4Bot: '#F59E0B',
+        l4Mid: '#FBBF24',
+        l4Top: '#FDE047',
+        haloRgb: '153, 27, 27',
+        haloInnerRgb: '180, 83, 9'
+      };
+    };
+
     const engine = {
       currentPower: 0.72,
       targetPower: 0.72,
       time: 1.4,
       lastTs: 0,
       isTouching: false,
-      touchX: 0,
-      touchY: 0,
-      lastTouchX: 0,
-      lastTouchY: 0,
+      touchX: 160,
+      touchY: 120,
+      lastTouchX: 160,
+      lastTouchY: 120,
       targetWindX: 0,
       windX: 0,
       windVelX: 0,
@@ -813,23 +920,24 @@ const App = {
       stretchY: 0,
       stretchVelY: 0,
       touchBoost: 0,
-      plumes: [],
       sparks: [],
       smoke: [],
-      spawnBurst: (count = 12, cx = null, cy = null) => {
-        const w = canvas.clientWidth || 340;
-        const h = canvas.clientHeight || 174;
-        const originX = cx !== null ? cx : w * 0.5;
-        const originY = cy !== null ? cy : h - 45;
+      fatDrops: [],
+      meltRings: [],
+      spawnBurst: (count = 10, cx = null, cy = null) => {
+        const w = canvas.clientWidth || 320;
+        const h = canvas.clientHeight || 220;
+        const originX = cx !== null ? Math.max(48, Math.min(w - 48, cx)) : w * 0.5;
+        const originY = cy !== null ? Math.max(48, Math.min(h - 40, cy)) : h * 0.65;
         for (let i = 0; i < count; i++) {
           engine.sparks.push({
-            x: originX + (Math.random() - 0.5) * 32,
-            y: originY + (Math.random() - 0.5) * 20,
-            vx: (Math.random() - 0.5) * 2.8 + engine.windX * 0.05,
-            vy: -(1.2 + Math.random() * 2.4),
-            r: 1.4 + Math.random() * 2.3,
-            alpha: 0.95,
-            hue: 15 + Math.random() * 32
+            x: originX + (Math.random() - 0.5) * 28,
+            y: originY + (Math.random() - 0.5) * 18,
+            vx: (Math.random() - 0.5) * 2.2 + engine.windX * 0.04,
+            vy: -(1.0 + Math.random() * 2.0),
+            r: 1.3 + Math.random() * 1.9,
+            alpha: 0.9,
+            hue: 18 + Math.random() * 30
           });
         }
       }
@@ -841,8 +949,8 @@ const App = {
       const clientX = ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX;
       const clientY = ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY;
       return {
-        x: Math.max(12, Math.min(rect.width - 12, clientX - rect.left)),
-        y: Math.max(12, Math.min(rect.height - 12, clientY - rect.top)),
+        x: Math.max(44, Math.min(rect.width - 44, clientX - rect.left)),
+        y: Math.max(44, Math.min(rect.height - 36, clientY - rect.top)),
         w: rect.width,
         h: rect.height
       };
@@ -855,10 +963,10 @@ const App = {
       engine.touchY = pos.y;
       engine.lastTouchX = pos.x;
       engine.lastTouchY = pos.y;
-      engine.targetWindX = (pos.x - pos.w * 0.5) * 0.48;
-      engine.targetStretchY = (pos.h * 0.58 - pos.y) * 0.28;
-      engine.touchBoost = 0.12;
-      engine.spawnBurst(8, pos.x, pos.y);
+      engine.targetWindX = (pos.x - pos.w * 0.5) * 0.44;
+      engine.targetStretchY = (pos.h * 0.58 - pos.y) * 0.24;
+      engine.touchBoost = 0.10;
+      engine.spawnBurst(6, pos.x, pos.y);
       this.playFeedback('tap');
     };
 
@@ -873,13 +981,12 @@ const App = {
       engine.touchX = pos.x;
       engine.touchY = pos.y;
 
-      // Feed finger position & swipe momentum smoothly into spring target
-      engine.targetWindX = (pos.x - pos.w * 0.5) * 0.52 + dx * 1.6;
-      engine.targetStretchY = Math.max(-22, Math.min(28, (pos.h * 0.58 - pos.y) * 0.34 - dy * 0.6));
-      engine.touchBoost = Math.min(0.18, engine.touchBoost + Math.hypot(dx, dy) * 0.003);
+      engine.targetWindX = (pos.x - pos.w * 0.5) * 0.48 + dx * 1.4;
+      engine.targetStretchY = Math.max(-20, Math.min(24, (pos.h * 0.58 - pos.y) * 0.30 - dy * 0.5));
+      engine.touchBoost = Math.min(0.15, engine.touchBoost + Math.hypot(dx, dy) * 0.0025);
 
-      if (Math.random() < 0.75) {
-        engine.spawnBurst(2, pos.x, pos.y);
+      if (Math.random() < 0.55) {
+        engine.spawnBurst(1, pos.x, pos.y);
       }
     };
 
@@ -895,11 +1002,8 @@ const App = {
     stage.addEventListener('pointerup', onUp);
     stage.addEventListener('pointercancel', onUp);
     stage.addEventListener('pointerleave', onUp);
-    stage.addEventListener('touchstart', onDown, { passive: true });
-    stage.addEventListener('touchmove', onMove, { passive: false });
-    stage.addEventListener('touchend', onUp);
 
-    // Draws a pure, lush, iconic S-curved teardrop flame (modeled on the exact proportions of the top-bar flame icon)
+    // Draws a pure, lush, iconic S-curved teardrop flame
     const traceLushTeardropPath = (
       cx,
       baseY,
@@ -908,7 +1012,7 @@ const App = {
       bellySway,
       upperSway,
       tipSway,
-      sideLickMode = 'none', // 'left', 'right', 'both', or 'none'
+      sideLickMode = 'none',
       t = 0
     ) => {
       const halfW = w * 0.5;
@@ -918,15 +1022,11 @@ const App = {
 
       const leftBellyX = cx - halfW + bellySway;
       const rightBellyX = cx + halfW + bellySway;
-
-      // Tilt of the vertical tangent at the belly crests so the curve is 100% C1-smooth
       const bellyTilt = (upperSway - bellySway) * 0.28;
 
       ctx.beginPath();
-      // Start at bottom center (0, 0)
       ctx.moveTo(cx, baseY);
 
-      // 1. Bottom center -> Left belly crest (quarter-ellipse rounded base)
       ctx.bezierCurveTo(
         cx - halfW * 0.56,
         baseY,
@@ -936,7 +1036,6 @@ const App = {
         bellyY
       );
 
-      // 2. Left belly crest -> Main Tip (either with an iconic side-lick + smooth U-valley, or a pure sweeping S-curve)
       if (sideLickMode === 'left' || sideLickMode === 'both') {
         const lPulse = 0.68 + Math.sin(t * 3.8 + 0.9) * 0.055;
         const lickX = cx - halfW * 0.80 + upperSway * 0.55 + Math.sin(t * 3.8) * (halfW * 0.05);
@@ -946,7 +1045,6 @@ const App = {
         const valX = cx - halfW * 0.56 + upperSway * 0.65;
         const valY = baseY - h * valH;
 
-        // 2a. Sweep smoothly upward from Left Belly Crest to Left Side-Lick Peak
         ctx.bezierCurveTo(
           leftBellyX + bellyTilt * 0.40,
           baseY - h * 0.50,
@@ -955,8 +1053,6 @@ const App = {
           lickX,
           lickY
         );
-
-        // 2b. Inner slope of Left Side-Lick curving down into the U-Valley
         ctx.bezierCurveTo(
           lickX + halfW * 0.06,
           lickY + h * 0.07,
@@ -965,8 +1061,6 @@ const App = {
           valX,
           valY
         );
-
-        // 2c. Lush upward S-curve from the Valley up into the tall Main Tip
         ctx.bezierCurveTo(
           valX + halfW * 0.02,
           valY - h * 0.15,
@@ -976,7 +1070,6 @@ const App = {
           tipY
         );
       } else {
-        // Pure, lush S-curve sweep from Left Belly to Main Tip
         ctx.bezierCurveTo(
           leftBellyX + bellyTilt * 0.65,
           baseY - h * 0.59,
@@ -987,7 +1080,6 @@ const App = {
         );
       }
 
-      // 3. Main Tip -> Right belly crest (either with a secondary side-lick + U-valley, or a pure sweeping S-curve)
       if (sideLickMode === 'right' || sideLickMode === 'both') {
         const rBasePulse = sideLickMode === 'both' ? 0.60 : 0.66;
         const rPulse = rBasePulse + Math.cos(t * 3.5 + 2.1) * 0.055;
@@ -998,7 +1090,6 @@ const App = {
         const valX = cx + halfW * 0.56 + upperSway * 0.65;
         const valY = baseY - h * valH;
 
-        // 3a. Lush S-curve from Main Tip down into the Right Valley
         ctx.bezierCurveTo(
           cx + halfW * 0.30 + upperSway,
           baseY - h * 0.80,
@@ -1007,8 +1098,6 @@ const App = {
           valX,
           valY
         );
-
-        // 3b. Rise from Right Valley up to Right Side-Lick Peak
         ctx.bezierCurveTo(
           valX + halfW * 0.06,
           valY + h * 0.01,
@@ -1017,8 +1106,6 @@ const App = {
           lickX,
           lickY
         );
-
-        // 3c. Sweep smoothly downward from Right Side-Lick Peak to Right Belly Crest
         ctx.bezierCurveTo(
           lickX + halfW * 0.12,
           lickY + h * 0.10,
@@ -1028,7 +1115,6 @@ const App = {
           bellyY
         );
       } else {
-        // Pure, lush S-curve sweep from Main Tip to Right Belly
         ctx.bezierCurveTo(
           cx + halfW * 0.42 + upperSway,
           baseY - h * 0.76,
@@ -1039,7 +1125,6 @@ const App = {
         );
       }
 
-      // 4. Right belly crest -> Bottom center (quarter-ellipse rounded base)
       ctx.bezierCurveTo(
         rightBellyX - bellyTilt * 0.38,
         baseY - h * 0.14,
@@ -1052,7 +1137,6 @@ const App = {
       ctx.closePath();
     };
 
-    // Draws a unified, glowing volumetric thermal layer
     const drawUnifiedFireLayer = (
       cx,
       baseY,
@@ -1075,7 +1159,6 @@ const App = {
 
       const t = engine.time - phaseLag;
 
-      // Upward-traveling wave phases (belly -> upper body -> tip) for true fluid upward S-wave motion!
       const heightBreath = 1.0 + Math.sin(t * 4.2) * 0.038 + Math.cos(t * 2.7) * 0.022;
       const curH = h * heightBreath;
 
@@ -1105,7 +1188,8 @@ const App = {
         ctx.shadowBlur = glowBlur;
       }
 
-      const effectiveMode = pVisual < 0.25 ? 'none' : sideLickMode;
+      // As flame calms down (more calories eaten), side licks progressively simplify
+      const effectiveMode = pVisual < 0.36 ? 'none' : pVisual < 0.56 && sideLickMode === 'both' ? 'left' : sideLickMode;
       traceLushTeardropPath(
         cx,
         baseY,
@@ -1130,7 +1214,7 @@ const App = {
 
     const renderFrame = (nowTs = 0) => {
       const w = canvas.clientWidth || 346;
-      const h = canvas.clientHeight || 174;
+      const h = canvas.clientHeight || 220;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
 
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
@@ -1138,14 +1222,17 @@ const App = {
         canvas.height = Math.round(h * dpr);
       }
 
+      // Smoothly interpolate calorie-deficit flame power
+      engine.currentPower += (engine.targetPower - engine.currentPower) * 0.08;
+      const p = Math.max(0.11, Math.min(1.12, engine.currentPower + engine.touchBoost));
+      pVisual = Math.pow(p, 1.28);
+
+      // Flame wave speed slows down as calories eaten increase
+      const speedMult = 0.32 + Math.min(1, pVisual) * 0.82;
       const dt = engine.lastTs ? Math.min(0.033, Math.max(0.008, (nowTs - engine.lastTs) * 0.001)) : 0.016;
       engine.lastTs = nowTs;
-      engine.time += dt * 1.05;
+      engine.time += dt * speedMult;
 
-      // Smoothly interpolate calorie-deficit flame power
-      engine.currentPower += (engine.targetPower - engine.currentPower) * 0.09;
-
-      // Second-order spring-damper physics for buttery-smooth touch response
       const springK = 0.12;
       const damping = 0.82;
       engine.windVelX = (engine.windVelX + (engine.targetWindX - engine.windX) * springK) * damping;
@@ -1162,77 +1249,147 @@ const App = {
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, w, h);
 
-      const p = Math.max(0.12, Math.min(1.15, engine.currentPower + engine.touchBoost));
-      pVisual = Math.pow(p, 1.25);
       const cx = w * 0.5;
-      const baseY = Math.round(h * 0.85);
+      const baseY = Math.round(h * 0.83);
 
-      // Flame physical dimensions scaled to the larger central canvas in the Hero Card
-      const maxFlameH = Math.min(225, Math.round(h * 0.72));
-      const flameH = Math.max(36, Math.min(maxFlameH, 28 + pVisual * (maxFlameH - 28) + engine.stretchY));
-      const flameW = Math.max(32, 26 + pVisual * Math.round(maxFlameH * 0.72));
+      // Flame physical dimensions: shrinks dramatically when calories increase
+      const maxFlameH = Math.min(205, Math.round(h * 0.68));
+      const flameH = Math.max(24, Math.min(maxFlameH, 20 + pVisual * (maxFlameH - 20) + engine.stretchY));
+      const flameW = Math.max(22, 18 + pVisual * Math.round(maxFlameH * 0.70));
       const swayX = engine.windX;
 
-      // Dynamic Ambient Fire Lighting synchronization (60fps gentle reaction)
-      if (!this.state || this.state.ambientFireLight !== false) {
-        const microFlicker = Math.sin(engine.time * 3.6) * 0.024 + Math.cos(engine.time * 5.9) * 0.014;
-        const microSwayPct = Math.sin(engine.time * 3.4 - 0.9) * 2.4;
-        const normX = Math.max(22, Math.min(78, 50 + (swayX / Math.max(120, w)) * 58 + microSwayPct));
-        const normY = Math.max(24, Math.min(62, 46 - pVisual * 9 - (engine.stretchY / Math.max(90, h)) * 18 + Math.cos(engine.time * 2.8) * 1.4));
-        const glowAlpha = Math.max(0.05, Math.min(0.42, 0.09 + pVisual * 0.22 + microFlicker));
-        const cardGlowAlpha = Math.max(0.04, Math.min(0.32, 0.06 + pVisual * 0.16 + microFlicker * 0.8));
-        const rimAlpha = Math.max(0.10, Math.min(0.46, 0.14 + pVisual * 0.24 + microFlicker));
+      const palette = getDynamicFlamePalette(p);
 
-        const fireAngleDeg = Math.round(135 + (normX - 50) * 1.4 + Math.sin(engine.time * 2.6) * 12);
+      // Synchronize ambient lighting CSS variables
+      if (!this.state || this.state.ambientFireLight !== false) {
+        const microFlicker = Math.sin(engine.time * 3.6) * 0.02 + Math.cos(engine.time * 5.9) * 0.01;
+        const normX = Math.max(28, Math.min(72, 50 + (swayX / Math.max(120, w)) * 45));
+        const normY = Math.max(28, Math.min(60, 46 - pVisual * 8));
+        const glowAlpha = Math.max(0.03, Math.min(0.32, 0.05 + pVisual * 0.18 + microFlicker));
         const rootStyle = document.documentElement.style;
         rootStyle.setProperty('--fire-x', `${normX.toFixed(1)}%`);
         rootStyle.setProperty('--fire-y', `${normY.toFixed(1)}%`);
-        rootStyle.setProperty('--fire-angle', `${fireAngleDeg}deg`);
         rootStyle.setProperty('--fire-power', pVisual.toFixed(3));
         rootStyle.setProperty('--fire-glow-alpha', glowAlpha.toFixed(3));
-        rootStyle.setProperty('--fire-card-glow', `rgba(249, 115, 22, ${cardGlowAlpha.toFixed(3)})`);
-        rootStyle.setProperty('--fire-rim-tint', `rgba(251, 146, 60, ${rimAlpha.toFixed(3)})`);
-
-        const svgLight = document.getElementById('svgFirePointLight');
-        if (svgLight) {
-          svgLight.setAttribute('x', String(Math.round(normX * 3.9)));
-          svgLight.setAttribute('y', String(Math.round(normY * 4.2)));
-        }
       }
 
-      // 1. Soft Warm Golden-Orange Halo behind the Flame (scales with burn power)
-      const glowRadius = 32 + pVisual * 96;
+      // 1. Bounded Soft Halo behind the Flame (strictly contained inside canvas bounds so it never clips into a square)
+      const haloCenterY = baseY - flameH * 0.42;
+      const maxSafeRadius = Math.max(24, Math.min(cx - 22, w - cx - 22, haloCenterY - 12, h - haloCenterY - 8));
+      const glowRadius = Math.min(maxSafeRadius, 24 + pVisual * 68);
       const glowGrad = ctx.createRadialGradient(
-        cx + swayX * 0.25,
-        baseY - flameH * 0.45,
-        6,
-        cx + swayX * 0.15,
-        baseY - flameH * 0.40,
+        cx + swayX * 0.18,
+        haloCenterY,
+        4,
+        cx + swayX * 0.12,
+        haloCenterY,
         glowRadius
       );
-      glowGrad.addColorStop(0, `rgba(251, 146, 60, ${(0.18 + pVisual * 0.36).toFixed(2)})`);
-      glowGrad.addColorStop(0.55, `rgba(253, 224, 71, ${(0.08 + pVisual * 0.18).toFixed(2)})`);
-      glowGrad.addColorStop(1, 'rgba(251, 146, 60, 0)');
+      glowGrad.addColorStop(0, `rgba(${palette.haloRgb}, ${(0.12 + pVisual * 0.26).toFixed(2)})`);
+      glowGrad.addColorStop(0.55, `rgba(${palette.haloInnerRgb}, ${(0.05 + pVisual * 0.12).toFixed(2)})`);
+      glowGrad.addColorStop(1, `rgba(${palette.haloRgb}, 0)`);
       ctx.fillStyle = glowGrad;
       ctx.beginPath();
-      ctx.arc(cx + swayX * 0.15, baseY - flameH * 0.40, glowRadius, 0, Math.PI * 2);
+      ctx.arc(cx + swayX * 0.12, haloCenterY, glowRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Soft Warm Floor Reflection (No ugly black oval!)
+      // 2. Soft Warm Floor Reflection
       ctx.save();
-      const baseShadowW = Math.max(24, flameW * 0.62);
+      const baseShadowW = Math.min(cx - 28, Math.max(18, flameW * 0.56));
       const floorGrad = ctx.createRadialGradient(cx, baseY + 2, 2, cx, baseY + 2, baseShadowW);
-      floorGrad.addColorStop(0, `rgba(234, 88, 12, ${(0.28 + pVisual * 0.32).toFixed(2)})`);
-      floorGrad.addColorStop(0.6, `rgba(245, 158, 11, ${(0.12 + pVisual * 0.15).toFixed(2)})`);
-      floorGrad.addColorStop(1, 'rgba(234, 88, 12, 0)');
+      floorGrad.addColorStop(0, `rgba(${palette.haloRgb}, ${(0.22 + pVisual * 0.28).toFixed(2)})`);
+      floorGrad.addColorStop(0.6, `rgba(${palette.haloInnerRgb}, ${(0.08 + pVisual * 0.12).toFixed(2)})`);
+      floorGrad.addColorStop(1, `rgba(${palette.haloRgb}, 0)`);
       ctx.fillStyle = floorGrad;
       ctx.beginPath();
-      ctx.ellipse(cx, baseY + 3, baseShadowW, 7, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, baseY + 3, baseShadowW, 6, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // 3. Four Crisp, Seamless Nested Flame Layers (100% Opaque Gradients + Soft Incandescent Bloom)
-      // Layer 1 (Outer): Deep Crimson-Red to Vibrant Orange (Iconic asymmetric left/right side-licks)
+      // 3. FAT-MELTING ANIMATION (قطرات الدهون الذائبة التي تنجذب للشعلة وتتبخر إلى طاقة)
+      if (p > 0.26 && engine.fatDrops.length < (p > 0.65 ? 4 : 2) && Math.random() < (0.045 * pVisual)) {
+        const fromLeft = Math.random() < 0.5;
+        const sideDir = fromLeft ? -1 : 1;
+        const startDist = flameW * (0.68 + Math.random() * 0.28);
+        const startY = baseY - flameH * (0.20 + Math.random() * 0.48);
+        engine.fatDrops.push({
+          sideDir,
+          startX: cx + sideDir * startDist,
+          startY,
+          targetY: baseY - flameH * (0.28 + Math.random() * 0.26),
+          progress: 0,
+          speed: 0.008 + Math.random() * 0.006 + pVisual * 0.006,
+          size: 4.2 + Math.random() * 2.2,
+          wobbleSeed: Math.random() * Math.PI * 2
+        });
+      }
+
+      for (let i = engine.fatDrops.length - 1; i >= 0; i--) {
+        const fd = engine.fatDrops[i];
+        fd.progress += fd.speed;
+        if (fd.progress >= 1) {
+          // Fat droplet hits the flame edge -> vaporizes in a golden-emerald sizzle ring!
+          const hitX = cx + fd.sideDir * (flameW * 0.22) + swayX * 0.35;
+          const hitY = fd.targetY;
+          engine.meltRings.push({
+            x: hitX,
+            y: hitY,
+            r: 3,
+            maxR: 13 + Math.random() * 5,
+            alpha: 0.85,
+            labelY: hitY - 4
+          });
+          engine.sparks.push({
+            x: hitX,
+            y: hitY,
+            vx: -fd.sideDir * (0.4 + Math.random() * 0.6),
+            vy: -(1.1 + Math.random() * 1.1),
+            r: 1.8,
+            alpha: 0.92,
+            hue: 46
+          });
+          engine.fatDrops.splice(i, 1);
+          continue;
+        }
+
+        const easeIn = fd.progress * fd.progress;
+        const curTargetX = cx + fd.sideDir * (flameW * 0.22) + swayX * 0.35;
+        const curX = fd.startX + (curTargetX - fd.startX) * easeIn;
+        const curY =
+          fd.startY +
+          (fd.targetY - fd.startY) * fd.progress +
+          Math.sin(engine.time * 4.5 + fd.wobbleSeed) * 2.2 * (1 - fd.progress);
+
+        // Shrink & stretch into a melting lipid droplet as it approaches the flame
+        const radius = fd.size * (1 - fd.progress * 0.38);
+        const angleToFire = Math.atan2(fd.targetY - curY, curTargetX - curX);
+        const stretch = 1 + easeIn * 0.65;
+        const alpha = Math.min(0.88, fd.progress * 3.5) * (1 - Math.pow(fd.progress, 3) * 0.3);
+
+        ctx.save();
+        ctx.translate(curX, curY);
+        ctx.rotate(angleToFire);
+        ctx.scale(stretch, 1 / Math.sqrt(stretch));
+
+        // Golden-butter lipid globule body
+        const dropGrad = ctx.createRadialGradient(-radius * 0.25, -radius * 0.25, 0.5, 0, 0, radius);
+        dropGrad.addColorStop(0, `rgba(254, 249, 195, ${alpha.toFixed(2)})`);
+        dropGrad.addColorStop(0.55, `rgba(250, 204, 21, ${(alpha * 0.92).toFixed(2)})`);
+        dropGrad.addColorStop(1, `rgba(217, 119, 6, ${(alpha * 0.75).toFixed(2)})`);
+        ctx.fillStyle = dropGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tiny glossy highlight dot on the fat globule
+        ctx.fillStyle = `rgba(255, 255, 255, ${(alpha * 0.75).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(-radius * 0.28, -radius * 0.28, Math.max(0.7, radius * 0.26), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 4. Four Nested Dynamic-Color Flame Layers
       drawUnifiedFireLayer(
         cx,
         baseY,
@@ -1241,16 +1398,15 @@ const App = {
         flameW,
         flameH,
         swayX,
-        '#DC2626',
-        '#EA580C',
-        '#F97316',
-        'rgba(249, 115, 22, 0.36)',
-        14,
+        palette.l1Bot,
+        palette.l1Mid,
+        palette.l1Top,
+        palette.l1Glow,
+        12,
         0.0,
         'both'
       );
 
-      // Layer 2 (Mid): Rich Tangelo Orange to Golden Amber (Concentrically nested side-licks with phase lag)
       drawUnifiedFireLayer(
         cx,
         baseY - 1,
@@ -1259,35 +1415,35 @@ const App = {
         flameW,
         flameH,
         swayX * 0.85,
-        '#EA580C',
-        '#F59E0B',
-        '#FBBF24',
-        'rgba(245, 158, 11, 0.34)',
-        10,
+        palette.l2Bot,
+        palette.l2Mid,
+        palette.l2Top,
+        palette.l2Glow,
+        9,
         0.18,
         'both'
       );
 
-      // Layer 3 (Inner): Bright Amber to Sun-Yellow (Pure lush S-wave teardrop)
-      drawUnifiedFireLayer(
-        cx,
-        baseY - 2,
-        0.48,
-        0.63,
-        flameW,
-        flameH,
-        swayX * 0.62,
-        '#F59E0B',
-        '#FACC15',
-        '#FEF08A',
-        'rgba(250, 204, 21, 0.38)',
-        8,
-        0.38,
-        'none'
-      );
+      if (p > 0.18) {
+        drawUnifiedFireLayer(
+          cx,
+          baseY - 2,
+          0.48,
+          0.63,
+          flameW,
+          flameH,
+          swayX * 0.62,
+          palette.l3Bot,
+          palette.l3Mid,
+          palette.l3Top,
+          palette.l3Glow,
+          7,
+          0.38,
+          'none'
+        );
+      }
 
-      // Layer 4 (Heart): Warm Lemon to Pure White-Hot Core (Pure incandescent heart)
-      if (p > 0.20) {
+      if (p > 0.32) {
         drawUnifiedFireLayer(
           cx,
           baseY - 3,
@@ -1296,18 +1452,37 @@ const App = {
           flameW,
           flameH,
           swayX * 0.36,
-          '#FEF08A',
-          '#FEF9C3',
-          '#FFFFFF',
-          'rgba(254, 240, 138, 0.65)',
-          10,
+          palette.l4Bot,
+          palette.l4Mid,
+          palette.l4Top,
+          'rgba(254, 240, 138, 0.55)',
+          8,
           0.66,
           'none'
         );
       }
 
-      // 4. Sculpted Rising Flame Wisps (2 gentle teardrop embers rising above the crown)
-      if (pVisual > 0.28) {
+      // Render Fat-Vaporizing Sizzle Rings on the Flame Surface
+      for (let i = engine.meltRings.length - 1; i >= 0; i--) {
+        const mr = engine.meltRings[i];
+        mr.r += (mr.maxR - mr.r) * 0.16;
+        mr.alpha -= 0.032;
+        mr.labelY -= 0.45;
+        if (mr.alpha <= 0.02) {
+          engine.meltRings.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.strokeStyle = `rgba(254, 240, 138, ${mr.alpha.toFixed(2)})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(mr.x, mr.y, mr.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 5. Sculpted Rising Flame Wisps (only when flame is active)
+      if (pVisual > 0.34) {
         for (let wIdx = 0; wIdx < 2; wIdx++) {
           const wPhase = ((engine.time * 0.72 + wIdx * 0.5) % 1 + 1) % 1;
           const wEnv = Math.sin(wPhase * Math.PI);
@@ -1318,15 +1493,13 @@ const App = {
               wOffsetDir * flameW * 0.16 * (1 - wPhase * 0.3) +
               swayX * (0.75 + wPhase * 0.35) +
               Math.sin(engine.time * 3.0 + wIdx * 2.1) * (flameW * 0.06);
-            const wBaseY =
-              baseY -
-              flameH * (0.78 + wPhase * 0.28);
-            const wW = Math.max(2.0, flameW * 0.085 * wEnv);
-            const wH = Math.max(3.5, flameH * 0.13 * wEnv);
+            const wBaseY = baseY - flameH * (0.78 + wPhase * 0.24);
+            const wW = Math.max(2.0, flameW * 0.08 * wEnv);
+            const wH = Math.max(3.2, flameH * 0.12 * wEnv);
 
             ctx.save();
-            ctx.globalAlpha = (0.82 * Math.pow(wEnv, 0.75)).toFixed(2);
-            ctx.fillStyle = wIdx === 0 ? '#F97316' : '#FBBF24';
+            ctx.globalAlpha = (0.78 * Math.pow(wEnv, 0.75)).toFixed(2);
+            ctx.fillStyle = wIdx === 0 ? palette.l1Top : palette.l2Top;
             traceLushTeardropPath(
               wBaseX,
               wBaseY,
@@ -1334,7 +1507,7 @@ const App = {
               wH,
               swayX * 0.05 * wEnv,
               swayX * 0.10 * wEnv,
-              swayX * 0.15 * wEnv + Math.sin(engine.time * 3.6 + wIdx) * 2.0,
+              swayX * 0.15 * wEnv + Math.sin(engine.time * 3.6 + wIdx) * 1.8,
               'none',
               0
             );
@@ -1344,46 +1517,46 @@ const App = {
         }
       }
 
-      // Crisp Golden Embers on Touch / High Burn (kept tight around the flame axis, never dusty)
-      if (engine.isTouching && Math.random() < 0.45) {
+      // Golden Embers on Touch / High Burn (kept away from canvas edges)
+      if (engine.isTouching && Math.random() < 0.4) {
         engine.sparks.push({
-          x: cx + (Math.random() - 0.5) * flameW * 0.35 + swayX * 0.5,
-          y: baseY - flameH * (0.65 + Math.random() * 0.25),
-          vx: (Math.random() - 0.5) * 0.6 + swayX * 0.02,
-          vy: -(0.9 + Math.random() * 1.2),
-          r: 1.4 + Math.random() * 1.4,
-          alpha: 0.9,
+          x: cx + (Math.random() - 0.5) * flameW * 0.32 + swayX * 0.45,
+          y: baseY - flameH * (0.62 + Math.random() * 0.22),
+          vx: (Math.random() - 0.5) * 0.5 + swayX * 0.02,
+          vy: -(0.8 + Math.random() * 1.1),
+          r: 1.3 + Math.random() * 1.3,
+          alpha: 0.88,
           hue: 24 + Math.random() * 22
         });
       }
 
       for (let i = engine.sparks.length - 1; i >= 0; i--) {
         const sp = engine.sparks[i];
-        sp.x += sp.vx + Math.sin(engine.time * 3.2 + i) * 0.18;
+        sp.x += sp.vx + Math.sin(engine.time * 3.2 + i) * 0.16;
         sp.y += sp.vy;
-        sp.r *= 0.985;
-        sp.alpha -= 0.028;
-        if (sp.alpha <= 0.02 || sp.y < 8 || sp.r < 0.4) {
+        sp.r *= 0.984;
+        sp.alpha -= 0.03;
+        if (sp.alpha <= 0.02 || sp.y < 18 || sp.x < 24 || sp.x > w - 24 || sp.r < 0.4) {
           engine.sparks.splice(i, 1);
           continue;
         }
         ctx.save();
-        ctx.fillStyle = `hsla(${sp.hue}, 96%, 54%, ${sp.alpha.toFixed(2)})`;
+        ctx.fillStyle = `hsla(${sp.hue}, 96%, 56%, ${sp.alpha.toFixed(2)})`;
         ctx.beginPath();
         ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
 
-      // 5. Smoke Puffs when Flame Shrinks due to Eating High Calories (p < 0.48)
-      if (p < 0.48 && Math.random() < (0.55 - p) * 0.65) {
+      // 6. Smoke Puffs when Flame Shrinks due to Eating High Calories (p < 0.42)
+      if (p < 0.42 && Math.random() < (0.48 - p) * 0.65) {
         engine.smoke.push({
-          x: cx + swayX * 0.7 + (Math.random() - 0.5) * 14,
+          x: cx + swayX * 0.6 + (Math.random() - 0.5) * 12,
           y: baseY - flameH - 4,
-          vx: (Math.random() - 0.5) * 0.6 + swayX * 0.015,
-          vy: -(0.6 + Math.random() * 0.8),
-          r: 6 + Math.random() * 6,
-          alpha: 0.26
+          vx: (Math.random() - 0.5) * 0.5 + swayX * 0.015,
+          vy: -(0.55 + Math.random() * 0.7),
+          r: 5 + Math.random() * 5,
+          alpha: 0.24
         });
       }
 
@@ -1391,9 +1564,9 @@ const App = {
         const sm = engine.smoke[i];
         sm.x += sm.vx;
         sm.y += sm.vy;
-        sm.r += 0.18;
-        sm.alpha -= 0.005;
-        if (sm.alpha <= 0.01 || sm.y < 8) {
+        sm.r += 0.15;
+        sm.alpha -= 0.0055;
+        if (sm.alpha <= 0.01 || sm.y < 22) {
           engine.smoke.splice(i, 1);
           continue;
         }
@@ -1405,24 +1578,19 @@ const App = {
         ctx.restore();
       }
 
-      // 6. Interactive Finger Touch Halo when User Touches/Drags on the Fire
+      // 7. Interactive Finger Touch Halo (strictly bounded away from corners)
       if (engine.isTouching) {
+        const tx = Math.max(44, Math.min(w - 44, engine.touchX));
+        const ty = Math.max(44, Math.min(h - 36, engine.touchY));
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        const touchGrad = ctx.createRadialGradient(
-          engine.touchX,
-          engine.touchY,
-          2,
-          engine.touchX,
-          engine.touchY,
-          28
-        );
-        touchGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
-        touchGrad.addColorStop(0.5, 'rgba(249, 115, 22, 0.45)');
+        const touchGrad = ctx.createRadialGradient(tx, ty, 2, tx, ty, 22);
+        touchGrad.addColorStop(0, 'rgba(254, 240, 138, 0.75)');
+        touchGrad.addColorStop(0.5, 'rgba(249, 115, 22, 0.35)');
         touchGrad.addColorStop(1, 'rgba(234, 88, 12, 0)');
         ctx.fillStyle = touchGrad;
         ctx.beginPath();
-        ctx.arc(engine.touchX, engine.touchY, 28, 0, Math.PI * 2);
+        ctx.arc(tx, ty, 22, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -1957,59 +2125,78 @@ const App = {
     const box = document.getElementById('weeklyDeficitChartBox');
     if (!box) return;
 
-    const activeDays7 = days7.filter((d) => d.active !== false);
+    // Ensure 7 columns are always shown so the chart never looks like an empty black box on day 1
+    const arWeekNames = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'اليوم'];
+    let paddedDays = [...days7];
+    while (paddedDays.length < 7) {
+      const idx = 7 - paddedDays.length - 1;
+      paddedDays.unshift({
+        dayLabel: arWeekNames[idx] || '-',
+        arDay: arWeekNames[idx] || '-',
+        consumed: 0,
+        saved: 0,
+        active: false,
+        isPlaceholder: true
+      });
+    }
+
+    const activeDays7 = paddedDays.filter((d) => d.active !== false && !d.isPlaceholder);
     const avgIntake7d = activeDays7.length > 0
       ? Math.round(activeDays7.reduce((s, d) => s + d.consumed, 0) / activeDays7.length)
       : 0;
-    const avgDeficit7d = activeDays7.length > 0 ? Math.max(0, tdee - avgIntake7d) : 0;
+    const avgDeficit7d = activeDays7.length > 0 ? Math.max(0, tdee - avgIntake7d) : tdee;
     document.getElementById('gapStatTdee').textContent = `${tdee.toLocaleString()} سعرة`;
     document.getElementById('gapStatAvgIntake').textContent = `${avgIntake7d.toLocaleString()} سعرة`;
     document.getElementById('gapStatAvgDeficit').textContent = `${avgDeficit7d.toLocaleString()} سعرة/يوم`;
 
     const w = 320;
-    const h = 182;
+    const h = 164;
     const padTop = 24;
-    const padBot = 26;
+    const padBot = 24;
     const chartH = h - padTop - padBot;
     const maxKcal = Math.max(tdee * 1.08, 3200);
 
     const yFor = (val) => padTop + chartH - (Math.min(maxKcal, val) / maxKcal) * chartH;
     const yTdee = yFor(tdee);
 
-    const colW = w / days7.length;
+    const colW = w / paddedDays.length;
     const barW = 28;
 
-    const barsSvg = days7.map((d, idx) => {
+    const barsSvg = paddedDays.map((d, idx) => {
       const cx = idx * colW + colW / 2;
       const bx = cx - barW / 2;
+      const isToday = idx === paddedDays.length - 1;
+      const showGap = d.active !== false || isToday;
       const yConsumed = yFor(d.consumed);
-      const barH = Math.max(14, padTop + chartH - yConsumed);
-      const deficitVal = d.active === false ? 0 : Math.max(0, tdee - d.consumed);
-      const deficitH = d.active === false ? 0 : Math.max(0, yConsumed - yTdee);
+      const barH = d.isPlaceholder ? 8 : Math.max(14, padTop + chartH - yConsumed);
+      const deficitVal = showGap ? Math.max(0, tdee - d.consumed) : 0;
+      const deficitH = showGap ? Math.max(0, yConsumed - yTdee) : 0;
       const isUnderTarget = d.consumed <= target;
-      const barColor = isUnderTarget ? 'var(--sage)' : 'var(--gold)';
+      const barColor = d.isPlaceholder ? 'var(--line-med)' : isUnderTarget ? 'var(--sage)' : 'var(--gold)';
       const midGapY = yTdee + deficitH / 2 + 3;
 
       return `
-        <g>
+        <g opacity="${d.isPlaceholder ? '0.45' : '1'}">
           <!-- Highlighted Deficit Gap Pillar (The Fat Burn Zone) -->
-          <rect x="${bx}" y="${yTdee}" width="${barW}" height="${deficitH}" rx="5" fill="var(--sage-light)" stroke="var(--sage-border)" stroke-width="1" stroke-dasharray="2 2" />
-          ${deficitH > 22 ? `
+          <rect x="${bx}" y="${yTdee}" width="${barW}" height="${d.isPlaceholder ? Math.max(0, padTop + chartH - 8 - yTdee) : deficitH}" rx="5" fill="${d.isPlaceholder ? 'var(--bg-subtle)' : 'var(--sage-light)'}" stroke="${d.isPlaceholder ? 'var(--line-soft)' : 'var(--sage-border)'}" stroke-width="1" stroke-dasharray="2 2" />
+          ${!d.isPlaceholder && deficitH > 22 ? `
             <text x="${cx}" y="${midGapY}" text-anchor="middle" direction="ltr" unicode-bidi="embed" font-size="8.5" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" fill="var(--sage)">-${deficitVal}</text>
           ` : ''}
 
           <!-- Consumed Calories Solid Pillar -->
-          <rect x="${bx}" y="${yConsumed}" width="${barW}" height="${barH}" rx="5" fill="${barColor}" />
-          <text x="${cx}" y="${padTop + chartH - 5}" text-anchor="middle" font-size="8" font-family="Plus Jakarta Sans, sans-serif" font-weight="700" fill="#FFFFFF">${d.consumed}</text>
+          <rect x="${bx}" y="${d.isPlaceholder ? padTop + chartH - 8 : yConsumed}" width="${barW}" height="${barH}" rx="4" fill="${barColor}" />
+          ${!d.isPlaceholder ? `
+            <text x="${cx}" y="${padTop + chartH - 4}" text-anchor="middle" font-size="8" font-family="Plus Jakarta Sans, sans-serif" font-weight="700" fill="#FFFFFF">${d.consumed}</text>
+          ` : ''}
 
           <!-- Day Name -->
-          <text x="${cx}" y="${h - 8}" text-anchor="middle" font-size="9.5" font-family="Readex Pro, sans-serif" font-weight="700" fill="var(--ink-2)">${d.arDay}</text>
+          <text x="${cx}" y="${h - 7}" text-anchor="middle" font-size="9" font-family="Readex Pro, sans-serif" font-weight="${isToday ? '800' : '600'}" fill="${isToday ? 'var(--sage)' : 'var(--ink-3)'}">${d.arDay}</text>
         </g>
       `;
     }).join('');
 
     box.innerHTML = `
-      <svg viewBox="0 0 ${w} ${h}" width="100%" height="182">
+      <svg viewBox="0 0 ${w} ${h}" width="100%" height="164">
         <line x1="6" y1="${yTdee}" x2="${w - 6}" y2="${yTdee}" stroke="var(--flame)" stroke-width="1.5" stroke-dasharray="4 3" />
         <text x="${w / 2}" y="${yTdee - 6}" text-anchor="middle" font-size="9.5" font-family="Readex Pro, sans-serif" font-weight="700" fill="var(--flame)">سقف حرق الجسم اليومي (${tdee} سعرة)</text>
         ${barsSvg}

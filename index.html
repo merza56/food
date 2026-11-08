@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Readex+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="./styles.css?v=3.2" />
+  <link rel="stylesheet" href="./styles.css?v=3.6" />
 </head>
 <body>
 
@@ -92,10 +92,10 @@
               </div>
               <span class="gauge-big-num" id="ringRemainingKcal">1,950</span>
               <div class="hero-sub-badges">
-                <span class="zone-pill" id="deficitStatusBadge">
+                <button type="button" class="zone-pill" id="deficitStatusBadge" onclick="App.cycleFlameStagePreview()" title="اضغط لمعاينة تغير حجم ولون النار مع السعرات">
                   <span>✨</span>
                   <span id="deficitStatusText">شعلة الحرق في أوج توهجها!</span>
-                </span>
+                </button>
                 <span class="fat-pill" id="heroFatGramsMelted">🔥 أذبت 0 جم دهن</span>
                 <span id="ringSubStatus" style="display:none;">سعرة مسموحة</span>
               </div>
@@ -1042,6 +1042,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=3.2"></script>
+  <script src="./app.js?v=3.6"></script>
 </body>
 </html>
