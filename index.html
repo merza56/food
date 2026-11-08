@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>خِفَّة — رفيق العجز الحراري الذكي</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="خِفَّة" />
+  <meta name="theme-color" content="#090D0B" />
+  <link rel="manifest" href="./manifest.json" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Readex+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./styles.css?v=3.1" />
+</head>
+<body>
+
+  <div class="app-stage">
+    <div class="iphone-frame" id="iphoneRoot">
+      <!-- Gentle Fire-Reactive Ambient Lighting Layer -->
+      <div class="app-fire-ambient-layer" id="appFireAmbientLayer" aria-hidden="true"></div>
+
+      <!-- Floating XP Notification Toast -->
+      <div class="toast-pill" id="xpToast">
+        <span id="xpToastIcon">✨</span>
+        <span id="xpToastText">تم الحفظ بنجاح!</span>
+      </div>
+
+      <!-- UNIFIED COMPACT TOP HEADER (XP next to Streak) -->
+      <header class="top-bar home-top-header">
+        <!-- Right side (in RTL): Streak Pill + XP Pill side-by-side -->
+        <div class="top-right-cluster">
+          <button class="top-streak-pill" onclick="App.switchTab('xp')" title="سلسلة الالتزام">
+            <div class="gif-flame-wrap" aria-hidden="true">
+              <svg class="flame-svg-anim" viewBox="0 0 32 32">
+                <circle class="spark-1" cx="10" cy="8" r="1.5" fill="#FDE047" />
+                <circle class="spark-2" cx="22" cy="10" r="1.3" fill="#FB923C" />
+                <path class="flame-outer" d="M16 2 C21 9 27 13 27 20 C27 26.2 22.1 30 16 30 C9.9 30 5 26.2 5 20 C5 14.5 9.5 10.5 12 6 C12 9.5 14 11 16 2 Z" fill="#F97316" />
+                <path class="flame-mid" d="M16 7 C19.5 12 23.5 15 23.5 20.5 C23.5 25 20.2 28 16 28 C11.8 28 8.5 25 8.5 20.5 C8.5 16 11.5 13 16 7 Z" fill="#FB923C" />
+                <path class="flame-core" d="M16 13 C18 16.5 20 18.5 20 21.8 C20 24.5 18.2 26.5 16 26.5 C13.8 26.5 12 24.5 12 21.8 C12 18.5 14 16.5 16 13 Z" fill="#FEF08A" />
+              </svg>
+            </div>
+            <span class="streak-days-num" id="headerStreakText">0</span>
+          </button>
+
+          <button class="top-xp-pill" onclick="App.switchTab('xp')" title="نقاط الـ XP والمستوى">
+            <span class="xp-sparkle-dot" aria-hidden="true">✨</span>
+            <span class="num" id="headerXpCompact">0XP</span>
+          </button>
+        </div>
+
+        <!-- Center: iPhone Dynamic Island Notch -->
+        <div class="status-notch" aria-hidden="true"></div>
+
+        <!-- Left side (in RTL): 3-Dots Settings Menu Button -->
+        <div class="top-left-cluster">
+          <button class="dots-menu-btn" onclick="App.openSettingsSheet()" title="الإعدادات والبيانات والتحديثات" id="settingsMenuBtn" aria-label="الإعدادات">
+            <svg width="6" height="20" viewBox="0 0 6 20" fill="currentColor">
+              <circle cx="3" cy="3.5" r="2" />
+              <circle cx="3" cy="10" r="2" />
+              <circle cx="3" cy="16.5" r="2" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Hidden legacy elements kept for state compatibility -->
+        <div style="display:none;" aria-hidden="true">
+          <span id="iosClock">9:41</span>
+          <span id="headerXpLine"></span>
+          <div id="headerXpFill"></div>
+          <span id="headerLevelPct"></span>
+        </div>
+      </header>
+
+      <!-- Main Scrollable Viewport -->
+      <main class="main-scroll" id="appViewport">
+        <!-- ==============================================================
+             SCREEN 1: TODAY (اليوم — شعلة الحرق التفاعلية والزجاج السائل)
+             ============================================================== -->
+        <section class="screen active" id="tab-today">
+          <!-- HERO METABOLIC DEFICIT CARD -->
+          <div class="hero-card">
+            <!-- Top Heading & Big Remaining Calories Number -->
+            <div class="hero-top-counter">
+              <div class="hero-caption-pill">
+                <span class="hero-live-dot"></span>
+                <span class="gauge-label-top" id="ringCenterCaption">المتبقي من هدف اليوم</span>
+              </div>
+              <span class="gauge-big-num" id="ringRemainingKcal">1,950</span>
+              <div class="hero-sub-badges">
+                <span class="zone-pill" id="deficitStatusBadge">
+                  <span>✨</span>
+                  <span id="deficitStatusText">شعلة الحرق في أوج توهجها!</span>
+                </span>
+                <span class="fat-pill" id="heroFatGramsMelted">🔥 أذبت 0 جم دهن</span>
+                <span id="ringSubStatus" style="display:none;">سعرة مسموحة</span>
+              </div>
+            </div>
+
+            <!-- Center Interactive Touch-Responsive Fat-Burning Fire -->
+            <div class="fire-hearth-stage" id="fireHearthStage">
+              <div class="fire-canvas-area">
+                <div class="fire-ambient-glow" id="fireAmbientGlow"></div>
+                <canvas id="heroFireCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Bottom Bars + 3-Column Summary Strip -->
+            <div class="hero-bottom-metrics">
+              <!-- Progress Bars Row -->
+              <div class="hero-bars-row">
+                <div class="hero-bar-single">
+                  <div class="hero-bar-fill tdee-bar-fill" id="heroTdeeBarFill" style="width: 100%;"></div>
+                </div>
+                <div class="hero-bar-double">
+                  <div class="hero-bar-fill intake-bar-fill" id="heroIntakeBarFill" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <!-- 3-Column Labels & Values -->
+              <div class="hero-stats-grid">
+                <div class="hero-stat-box">
+                  <span class="stat-box-label"><i class="stat-dot dot-flame"></i>حرق الجسم</span>
+                  <span class="stat-box-num" id="heroTdeeVal">2,950</span>
+                </div>
+                <div class="hero-stat-box">
+                  <span class="stat-box-label"><i class="stat-dot dot-sage"></i>الهدف الذكي</span>
+                  <span class="stat-box-num" id="ledgerTargetKcal">1,950</span>
+                </div>
+                <div class="hero-stat-box">
+                  <span class="stat-box-label"><i class="stat-dot dot-ink"></i>أكلت اليوم</span>
+                  <span class="stat-box-num" id="ledgerConsumedKcal">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PRIMARY ACTION PAIR (وجبه جديده | جوعان؟ كبح الجوع) -->
+          <div class="primary-actions-grid">
+            <button class="big-action-btn clean-outline-btn meal-card-btn" onclick="App.openFoodHub('breakfast', 'custom')">
+              <span class="action-card-chip meal-chip">🍽️ +XP</span>
+              <span class="action-main-title">وجبه جديده</span>
+              <span class="action-sub-caption">تسجيل أكل أو توفير</span>
+            </button>
+
+            <button class="big-action-btn clean-outline-btn hunger-card-btn" onclick="App.openHungerCenter()">
+              <span class="action-card-chip hunger-chip"><i class="pulse-dot-ocean"></i>🛡️ فوري</span>
+              <span class="action-main-title">جوعان؟</span>
+              <span class="action-sub-caption">كبح الجوع</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SCREEN 2: ANALYTICS LAB (مختبر تحليل البيانات — مرتب وواضح)
+             ============================================================== -->
+        <section class="screen" id="tab-analytics">
+          <!-- 4 KPI CARDS -->
+          <div class="kpi-grid-2x2">
+            <div class="kpi-card">
+              <span class="kpi-card-label">إجمالي العجز المحقق</span>
+              <span class="kpi-card-val" id="kpiTotalDeficit">0 سعرة</span>
+              <span class="kpi-card-sub">🔥 سعرات لم تدخل جسمك</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-card-label">دهون صافية ذابت</span>
+              <span class="kpi-card-val" id="kpiTotalFatKg">0.00 كجم</span>
+              <span class="kpi-card-sub" id="kpiTotalFatGramsSub">تعادل 0 جرام دهن صافي</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-card-label">بنك قرارات التوفير</span>
+              <span class="kpi-card-val" id="kpiSavedBankKcal">0 سعرة</span>
+              <span class="kpi-card-sub">🛡️ وفّرتها بتصغير الحصص</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-card-label">نسبة خفض السعرات</span>
+              <span class="kpi-card-val" id="kpiAvgReduction">0% أقل</span>
+              <span class="kpi-card-sub">✓ تحت سقف حرق جسمك</span>
+            </div>
+          </div>
+
+          <!-- TOOL 1: SHOWCASE BUTTER / FAT BLOCK MELTER (Clean 8-Cube Visual) -->
+          <div class="butter-showcase-card">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>🧈</span>
+                <span>مذيب قوالب الدهون (كل قالب = 250 جم)</span>
+              </h2>
+              <span class="card-action-link" id="butterBlocksCountLabel">0.0 قوالب ذابت</span>
+            </div>
+
+            <!-- Live Melting Active Block Progress -->
+            <div class="active-cube-banner">
+              <div class="melting-cube-visual">
+                <span style="font-size:18px;">🧈🔥</span>
+                <span class="melting-cube-pct" id="activeCubePctText">0%</span>
+              </div>
+              <div class="active-cube-info">
+                <div class="active-cube-title">
+                  <span id="activeCubeTitleText">القالب رقم 1 يذوب الآن!</span>
+                  <span style="color:var(--flame);" id="activeCubeGramsText">ذاب 0 من 250 جرام</span>
+                </div>
+                <div class="cube-progress-track">
+                  <div class="cube-progress-fill" id="activeCubeProgressBar" style="width: 0%;"></div>
+                </div>
+                <div style="font-size:10px; color:var(--ink-3);" id="activeCubeRemainingHint">
+                  باقي توفير 1,925 سعرة فقط ليذوب القالب رقم 1 بالكامل!
+                </div>
+              </div>
+            </div>
+
+            <div class="butter-grid" id="butterBlocksGrid"></div>
+          </div>
+
+          <!-- TOOL 2: 7-DAY DEFICIT GAP CHART -->
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>📊</span>
+                <span>فجوة العجز الحراري (آخر 7 أيام)</span>
+              </h2>
+              <span class="card-action-link">الأخضر = دهون محروقة</span>
+            </div>
+
+            <div class="chart-summary-strip">
+              <div class="chart-mini-stat">
+                <div style="font-size:9.5px; color:var(--ink-3);">سقف الحرق</div>
+                <div class="num" style="font-size:12px; font-weight:800; color:var(--flame);" id="gapStatTdee">2,950 سعرة</div>
+              </div>
+              <div class="chart-mini-stat">
+                <div style="font-size:9.5px; color:var(--ink-3);">متوسط أكلك</div>
+                <div class="num" style="font-size:12px; font-weight:800; color:var(--ink-1);" id="gapStatAvgIntake">0 سعرة</div>
+              </div>
+              <div class="chart-mini-stat" style="background:var(--sage-light); border-color:var(--sage-border);">
+                <div style="font-size:9.5px; color:var(--sage);">صافي العجز</div>
+                <div class="num" style="font-size:12px; font-weight:800; color:var(--sage);" id="gapStatAvgDeficit">0 سعرة/يوم</div>
+              </div>
+            </div>
+
+            <div class="svg-chart-wrap" id="weeklyDeficitChartBox"></div>
+          </div>
+
+          <!-- TOOL 3: FUTURE WEIGHT SIMULATOR -->
+          <div class="sim-card">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>🚀</span>
+                <span>محاكي المستقبل: لو قللت سعراتك؟</span>
+              </h2>
+              <span class="card-action-link" id="simBadgeValue">توفير 1,000 سعرة/يوم</span>
+            </div>
+
+            <div class="sim-control-box">
+              <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700;">
+                <span>الأكل اليومي: <strong style="color:var(--sage);" id="simTargetIntakeLabel">1,950 سعرة</strong></span>
+                <span style="color:var(--flame);" id="simDailyFatBurnLabel">يذيب 130 جرام دهن/يوم</span>
+              </div>
+              <input
+                type="range"
+                class="clean-slider"
+                id="deficitSimSlider"
+                min="400"
+                max="1500"
+                step="50"
+                value="1000"
+                oninput="App.updateSimulator(this.value)"
+              />
+              <div style="display:flex; justify-content:space-between; font-size:9.5px; color:var(--ink-3);">
+                <span>تخفيف هادئ (400)</span>
+                <span>عجز ذهبي (1000)</span>
+                <span>عجز مكثف (1500)</span>
+              </div>
+            </div>
+
+            <div class="sim-results-3col">
+              <div class="sim-result-item">
+                <span class="sim-period-lbl">بعد شهر</span>
+                <span class="sim-loss-val" id="simLoss30d">ينزل 3.9 كجم</span>
+                <span class="sim-future-wt" id="simWeight30d">135.1 كجم</span>
+              </div>
+              <div class="sim-result-item">
+                <span class="sim-period-lbl">بعد 3 أشهر</span>
+                <span class="sim-loss-val" id="simLoss90d">ينزل 11.7 كجم</span>
+                <span class="sim-future-wt" id="simWeight90d">127.3 كجم</span>
+              </div>
+              <div class="sim-result-item">
+                <span class="sim-period-lbl">بعد 6 أشهر</span>
+                <span class="sim-loss-val" id="simLoss180d">ينزل 23.4 كجم</span>
+                <span class="sim-future-wt" id="simWeight180d">115.6 كجم</span>
+              </div>
+            </div>
+
+            <div style="background:var(--sage-light); padding:9px 12px; border-radius:var(--r-sm); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+              <span>🎯 الوصول للهدف (<strong id="simGoalWeightText">95 كجم</strong>):</span>
+              <strong style="color:var(--sage);" id="simGoalDateText">خلال 11.3 شهر</strong>
+            </div>
+          </div>
+
+          <!-- TOOL 4: CALORIE LEAKS BY TIME OF DAY -->
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>🕵️‍♂️</span>
+                <span>توزيع استهلاكك حسب أوقات اليوم</span>
+              </h2>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;" id="calorieLeaksContainer"></div>
+            <div style="background:var(--sage-light); padding:9px 11px; border-radius:var(--r-sm); font-size:11px; color:var(--ink-1); line-height:1.45;" id="smartCoachAdviceBox"></div>
+          </div>
+
+          <!-- Hidden legacy chart box kept for safe DOM reference -->
+          <div id="trueWeightChartBox" style="display:none;" aria-hidden="true"></div>
+        </section>
+
+        <!-- ==============================================================
+             SCREEN 3: XP & GAMIFIED QUESTS (نظام XP والمهام)
+             ============================================================== -->
+        <section class="screen" id="tab-xp">
+          <div class="xp-master-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div>
+                <div style="font-size:10.5px; color:#86EFAC; font-weight:700;">نظام مكافأة العجز الحراري</div>
+                <h2 style="font-size:17px; font-weight:800; margin-top:2px;" id="xpTabRankTitle">المستوى 1: كاسر العادة</h2>
+                <div style="font-size:10.5px; opacity:0.85; margin-top:2px;" id="xpTabSubDesc">باقي 300 نقطة للرتبة التالية</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.12); padding:8px 14px; border-radius:16px; text-align:center; flex-shrink:0;">
+                <div class="num" style="font-size:18px; font-weight:800; color:#FDE68A;" id="xpTabTotalPoints">0</div>
+                <div style="font-size:9.5px; opacity:0.9;">إجمالي XP</div>
+              </div>
+            </div>
+
+            <div style="height:7px; background:rgba(0,0,0,0.28); border-radius:99px; overflow:hidden;">
+              <div id="xpTabProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, #FDE68A, #4ADE80);"></div>
+            </div>
+
+            <div class="xp-stats-3col">
+              <div class="xp-stat-pill">
+                <div style="font-size:13px; font-weight:800; color:#FDE68A;" id="xpStatStreak">0 يوماً</div>
+                <div style="font-size:9.5px; opacity:0.85;">سلسلة الالتزام</div>
+              </div>
+              <div class="xp-stat-pill">
+                <div style="font-size:13px; font-weight:800; color:#86EFAC;" id="xpStatShields">0 دروع</div>
+                <div style="font-size:9.5px; opacity:0.85;">حماية السلسلة</div>
+              </div>
+              <div class="xp-stat-pill">
+                <div style="font-size:13px; font-weight:800; color:#FCA5A5;" id="xpStatSavedCount">0 مرات</div>
+                <div style="font-size:9.5px; opacity:0.85;">قرارات توفير</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>🎯</span>
+                <span>مهام اليوم (اضغط للإنجاز وكسب XP)</span>
+              </h2>
+              <span class="card-action-link" id="questsProgressLabel">0 من 6 مكتملة</span>
+            </div>
+            <div class="log-list" id="dailyQuestsList"></div>
+          </div>
+
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>🏆</span>
+                <span>سُلّم رُتب الخِفّة (10 مستويات)</span>
+              </h2>
+            </div>
+            <div class="log-list" id="levelRoadmapList"></div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SCREEN 4: MY BODY & HEALTH GAINS (جسمي — واضح ومركز بدون ازدحام)
+             ============================================================== -->
+        <section class="screen" id="tab-profile">
+          <!-- 1. TRANSFORMATION PROGRESS & WEIGHT LOGGER -->
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>⚖️</span>
+                <span>متابعة الوزن ومسار التحوّل (+50 XP)</span>
+              </h2>
+              <span class="card-action-link" id="profileWeightLostBadge">خسرت 0 كجم</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:7px; text-align:center;">
+              <div class="hero-stat-box">
+                <span class="stat-box-num" id="profileStartWeight">139.0</span>
+                <span class="stat-box-label">وزن البداية</span>
+              </div>
+              <div class="hero-stat-box featured">
+                <span class="stat-box-num" id="profileCurrentWeight">139.0</span>
+                <span class="stat-box-label">الوزن الحالي</span>
+              </div>
+              <div class="hero-stat-box">
+                <span class="stat-box-num" id="profileGoalWeight">95.0</span>
+                <span class="stat-box-label">الهدف النهائي</span>
+              </div>
+            </div>
+
+            <!-- Overall Journey Progress Bar -->
+            <div style="background:var(--bg-app); padding:9px 11px; border-radius:var(--r-sm); border:1px solid var(--line-soft);">
+              <div style="display:flex; justify-content:space-between; font-size:10.5px; font-weight:700; margin-bottom:5px;">
+                <span id="journeyProgressText">أنجزت 0% من رحلة التخلص من الوزن الزائد</span>
+                <span style="color:var(--sage);" id="journeyRemainingKgText">باقي 44.0 كجم</span>
+              </div>
+              <div class="xp-mini-track" style="height:6px;">
+                <div class="xp-mini-fill" id="journeyProgressBar" style="width:4%;"></div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:7px;">
+              <input type="number" step="0.1" class="field-input num" id="quickWeightInput" value="139.0" style="flex:1;" aria-label="الوزن الحالي بالكيلوجرام" />
+              <button class="submit-btn" style="width:auto; padding:0 18px;" onclick="App.logNewWeight()">تحديث الوزن</button>
+            </div>
+          </div>
+
+          <!-- 2. REAL BIOLOGICAL & JOINT HEALTH GAINS -->
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>❤️‍🩹</span>
+                <span>مكاسب جسمك الصحية مما خسرته</span>
+              </h2>
+              <span class="card-action-link">تلقائي</span>
+            </div>
+
+            <div class="health-gains-grid">
+              <div class="gain-box">
+                <div class="gain-box-top">🦵 تخفيف حمل الركبتين</div>
+                <div class="gain-box-val" id="gainKneePressure">أزلت 0.0 كجم</div>
+                <div class="gain-box-desc">كل 1 كجم تخسره يزيل 4 كجم ضغط عن المفاصل.</div>
+              </div>
+
+              <div class="gain-box">
+                <div class="gain-box-top">📏 انكماش الخصر</div>
+                <div class="gain-box-val" id="gainWaistCm">ناقص 0.0 سم</div>
+                <div class="gain-box-desc">تقلص تقديري في محيط البطن والدهون الحشوية.</div>
+              </div>
+
+              <div class="gain-box">
+                <div class="gain-box-top">🧈 قوالب دهن ذابت</div>
+                <div class="gain-box-val" id="gainButterTotal">0.0 قالب دهن</div>
+                <div class="gain-box-desc">عدد قوالب الزبدة (250 جم) التي غادرت جسمك.</div>
+              </div>
+
+              <div class="gain-box">
+                <div class="gain-box-top">🫀 مؤشر الكتلة</div>
+                <div class="gain-box-val" id="gainBmiVal">BMI: 45.4</div>
+                <div class="gain-box-desc" id="gainBmiDelta">انخفض مؤشر كتلة جسمك بمقدار 0.0 نقطة.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. DAILY BIOLOGICAL NEEDS -->
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>🛡️</span>
+                <span>احتياجات جسمك اليومية للشبع وحماية العضلات</span>
+              </h2>
+            </div>
+            <div class="hero-stats-grid">
+              <div class="hero-stat-box">
+                <span class="stat-box-num" id="needProteinGrams">139 جرام</span>
+                <span class="stat-box-label">بروتين للشبع</span>
+              </div>
+              <div class="hero-stat-box featured">
+                <span class="stat-box-num" id="needWaterLiters">3.9 لتر</span>
+                <span class="stat-box-label">الماء اليومي</span>
+              </div>
+              <div class="hero-stat-box">
+                <span class="stat-box-num" id="needStepsCount">4,500</span>
+                <span class="stat-box-label">خطوة مريحة</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. STEP-BY-STEP MILESTONES ROADMAP -->
+          <div class="card-block">
+            <div class="card-header-row">
+              <h2 class="card-heading">
+                <span>🏁</span>
+                <span>المراحل القصيرة القادمة</span>
+              </h2>
+              <span class="card-action-link">خطوة بخطوة</span>
+            </div>
+            <div class="log-list" id="bodyMilestonesList"></div>
+          </div>
+
+          <!-- Quick link to open Settings & Calibration -->
+          <button type="button" class="open-settings-banner-btn" onclick="App.openSettingsSheet()">
+            <span>⚙️ فتح إعدادات الجسم والبيانات والتحديثات</span>
+            <span>←</span>
+          </button>
+        </section>
+      </main>
+
+      <!-- Floating Bottom Navigation Bar -->
+      <div class="tabbar-dock">
+        <nav class="tabbar-pill ref-pill-nav" aria-label="التنقل الرئيسي">
+          <!-- 1. Home / Today -->
+          <button class="nav-btn active" id="nav-today" onclick="App.switchTab('today')">
+            <span class="nav-svg-wrap" aria-hidden="true">
+              <svg class="icon-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 10.5L12 3l9 7.5v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9z"/>
+                <path d="M9 21V14h6v7"/>
+              </svg>
+              <svg class="icon-solid" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.3 2.3a1 1 0 0 1 1.4 0l9 7.5A1 1 0 0 1 22 10.6V19.5A2.5 2.5 0 0 1 19.5 22h-4.25a.75.75 0 0 1-.75-.75V15h-5v6.25a.75.75 0 0 1-.75.75H4.5A2.5 2.5 0 0 1 2 19.5v-8.9a1 1 0 0 1 .3-.8l9-7.5z"/>
+              </svg>
+            </span>
+            <span class="nav-label">اليوم</span>
+          </button>
+
+          <!-- 2. Analytics -->
+          <button class="nav-btn" id="nav-analytics" onclick="App.switchTab('analytics')">
+            <span class="nav-svg-wrap" aria-hidden="true">
+              <svg class="icon-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7.5" height="7.5" rx="2"/>
+                <rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/>
+                <rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/>
+                <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>
+              </svg>
+              <svg class="icon-solid" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="3" y="3" width="8" height="8" rx="2.3"/>
+                <rect x="13" y="3" width="8" height="8" rx="2.3"/>
+                <rect x="3" y="13" width="8" height="8" rx="2.3"/>
+                <rect x="13" y="13" width="8" height="8" rx="2.3"/>
+              </svg>
+            </span>
+            <span class="nav-label">التحليل</span>
+          </button>
+
+          <!-- 3. XP & Quests -->
+          <button class="nav-btn" id="nav-xp" onclick="App.switchTab('xp')">
+            <span class="nav-svg-wrap" aria-hidden="true">
+              <svg class="icon-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14l-6-3.5L5 20V6z"/>
+                <path d="M9 4h8a2 2 0 0 1 2 2v11"/>
+              </svg>
+              <svg class="icon-solid" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9.5 2.5h7.5A2.5 2.5 0 0 1 19.5 5v11.5a.75.75 0 0 1-1.5 0V5a1 1 0 0 0-1-1H9.5a.75.75 0 0 1 0-1.5z"/>
+                <path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h7a2.5 2.5 0 0 1 2.5 2.5v13.25a.75.75 0 0 1-1.14.64L10.5 17.4l-4.86 2.99a.75.75 0 0 1-1.14-.64V6.5z"/>
+              </svg>
+            </span>
+            <span class="nav-label">المهام</span>
+          </button>
+
+          <!-- 4. Profile / Body -->
+          <button class="nav-btn" id="nav-profile" onclick="App.switchTab('profile')">
+            <span class="nav-svg-wrap" aria-hidden="true">
+              <svg class="icon-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="3.5"/>
+                <path d="M5.5 19.5a6.5 6.5 0 0 1 13 0v.5a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-.5z"/>
+              </svg>
+              <svg class="icon-solid" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="7.8" r="4"/>
+                <path d="M4.5 19.2C4.5 15.6 7.8 13 12 13s7.5 2.6 7.5 6.2c0 1-.8 1.8-1.8 1.8H6.3c-1 0-1.8-.8-1.8-1.8z"/>
+              </svg>
+            </span>
+            <span class="nav-label">جسمي</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- ==============================================================
+           MODAL 1: CLEAN, ERGONOMIC FOOD & LOGGING SHEET (تسجيل وجبة جديدة رئيسي)
+           ============================================================== -->
+      <div class="sheet-overlay" id="logSheet" onclick="App.backdropClick(event, 'logSheet')">
+        <div class="sheet-box food-sheet-clean">
+          <div class="sheet-grabber"></div>
+
+          <!-- Top Header + Clean 3-Mode Segmented Switcher -->
+          <div class="food-sheet-header">
+            <div class="card-header-row">
+              <div>
+                <h3 class="sheet-main-title" id="logSheetTitle">تسجيل وجبة جديدة</h3>
+                <p class="sheet-sub-caption" id="timelineSummaryBadge">أكلت 0 سعرة • وفّرت 0 سعرة</p>
+              </div>
+              <button class="sheet-close-btn" onclick="App.closeSheet('logSheet')" aria-label="إغلاق">✕</button>
+            </div>
+
+            <!-- 3 Clear Sub-Views: Custom/Direct first by default! -->
+            <div class="sheet-mode-tabs" id="foodSheetModeTabs">
+              <button type="button" class="sheet-mode-btn active" id="modeBtn-custom" onclick="App.switchFoodSheetMode('custom')">
+                <span>⚖️</span>
+                <span>تسجيل وجبة</span>
+              </button>
+              <button type="button" class="sheet-mode-btn" id="modeBtn-menu" onclick="App.switchFoodSheetMode('menu')">
+                <span>🍽️</span>
+                <span>الأكلات الجاهزة</span>
+              </button>
+              <button type="button" class="sheet-mode-btn" id="modeBtn-journal" onclick="App.switchFoodSheetMode('journal')">
+                <span>📋</span>
+                <span>سجل اليوم</span>
+                <span class="mode-count-badge" id="journalCountBadge">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PANE 1 (DEFAULT): CUSTOM PORTION & PROMINENT CALORIE INPUT -->
+          <div class="food-sheet-pane active" id="foodPane-custom">
+            <div class="custom-meal-card">
+              <!-- Prominent Vertical Calorie Entry (Hero Box) -->
+              <div class="hero-kcal-entry-box">
+                <span class="hero-kcal-entry-title">كم سعرة استهلكت؟</span>
+                <div class="hero-kcal-input-row">
+                  <input
+                    type="number"
+                    id="customFoodKcalInput"
+                    class="hero-kcal-big-field num"
+                    value="350"
+                    min="10"
+                    max="3500"
+                    step="10"
+                    inputmode="numeric"
+                    oninput="App.onModalDirectKcalInput(this.value)"
+                    placeholder="350"
+                    aria-label="عدد السعرات الحرارية"
+                  />
+                  <span class="hero-kcal-unit-text">سعرة</span>
+                </div>
+                <span class="hero-kcal-entry-hint">اكتب الرقم مباشرةً أو اضبطه من الخيارات أدناه</span>
+              </div>
+
+              <!-- Quick Visual Portion Presets -->
+              <div class="field-group">
+                <span class="field-label">أو اختر الحصة بنقرة واحدة:</span>
+                <div class="portion-presets-row">
+                  <button type="button" class="portion-preset-btn" onclick="App.setCustomPreset(150, this)">
+                    <span class="preset-emoji">☕</span>
+                    <span class="preset-title">سناك خفيف</span>
+                    <span class="preset-kcal num">150</span>
+                  </button>
+                  <button type="button" class="portion-preset-btn active" onclick="App.setCustomPreset(350, this)">
+                    <span class="preset-emoji">🥣</span>
+                    <span class="preset-title">وجبة خفيفة</span>
+                    <span class="preset-kcal num">350</span>
+                  </button>
+                  <button type="button" class="portion-preset-btn" onclick="App.setCustomPreset(550, this)">
+                    <span class="preset-emoji">🍛</span>
+                    <span class="preset-title">وجبة مشبعة</span>
+                    <span class="preset-kcal num">550</span>
+                  </button>
+                  <button type="button" class="portion-preset-btn" onclick="App.setCustomPreset(850, this)">
+                    <span class="preset-emoji">🍔</span>
+                    <span class="preset-title">وجبة دسمة</span>
+                    <span class="preset-kcal num">850</span>
+                  </button>
+                </div>
+
+                <!-- Smooth Slider for fine adjustments -->
+                <div class="slider-adjust-wrap">
+                  <input
+                    type="range"
+                    class="clean-slider"
+                    id="customFoodKcalSlider"
+                    min="30"
+                    max="1400"
+                    step="10"
+                    value="350"
+                    oninput="App.onModalSliderChange(this.value)"
+                  />
+                </div>
+              </div>
+
+              <!-- Meal Name (Optional) -->
+              <div class="field-group">
+                <label class="field-label" for="customFoodName">اسم الوجبة (اختياري)</label>
+                <input type="text" id="customFoodName" class="field-input" placeholder="مثال: كبسة، بيض، نصف شاورما، قطعة حلى..." />
+              </div>
+
+              <!-- Smart 25% Cut Helper -->
+              <button type="button" class="smart-quarter-btn" onclick="App.applyQuarterPlateCut()">
+                <span>✂️</span>
+                <span>تركت ربع الصحن؟ اخصم 25% واكسب 60 XP</span>
+              </button>
+
+              <!-- Clear Action Buttons -->
+              <div class="custom-submit-actions">
+                <button type="button" class="submit-btn primary-meal-submit" id="modalSubmitBtn" onclick="App.submitCustomLog('meal')">
+                  + تسجيل كوجبة (350 سعرة)
+                </button>
+                <button type="button" class="submit-btn gold-save-submit" id="modalSaveDecisionBtn" onclick="App.submitCustomLog('saved')">
+                  🛡️ وفّرتها وما أكلتها (+80 XP)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANE 2: EASY BROWSING & SELECTION (الأكلات الجاهزة) -->
+          <div class="food-sheet-pane" id="foodPane-menu" style="display:none;">
+            <!-- Clean Search Box with Clear Icon -->
+            <div class="clean-search-box">
+              <span class="search-icon-prefix">🔍</span>
+              <input
+                type="text"
+                id="foodSearchInput"
+                class="clean-search-input"
+                placeholder="ابحث عن أكلة (كبسة، بيض، شاورما، قهوة...)"
+                oninput="App.onFoodSearch(this.value)"
+              />
+            </div>
+
+            <!-- Horizontal Scrollable Category Chips -->
+            <div class="food-cat-rail" id="foodHubCategories">
+              <button class="food-cat-chip active" onclick="App.selectFoodHubCat('breakfast')">🍳 فطور</button>
+              <button class="food-cat-chip" onclick="App.selectFoodHubCat('gulf')">🍛 شعبيات</button>
+              <button class="food-cat-chip" onclick="App.selectFoodHubCat('protein')">🍗 مشويات</button>
+              <button class="food-cat-chip" onclick="App.selectFoodHubCat('soups')">🥗 شوربة وسلطة</button>
+              <button class="food-cat-chip" onclick="App.selectFoodHubCat('drinks')">☕ قهوة وسناك</button>
+              <button class="food-cat-chip swap-chip" onclick="App.selectFoodHubCat('smart_swap')">🛡️ وفّرت وما أكلت</button>
+            </div>
+
+            <!-- Spacious, Scrollbar-Free Food Cards List -->
+            <div class="food-hub-scroll clean-food-list" id="unifiedFoodList"></div>
+          </div>
+
+          <!-- PANE 3: WATER & TODAY'S LOG (سجل اليوم والماء) -->
+          <div class="food-sheet-pane" id="foodPane-journal" style="display:none;">
+            <div class="water-card-clean">
+              <div class="card-header-row">
+                <span style="font-size:12px; font-weight:800; color:var(--ink-1);">💧 شرب الماء اليوم</span>
+                <span class="card-action-link" id="waterCountText">0 من 8 أكواب</span>
+              </div>
+              <div class="water-cups-grid" id="waterCupsContainer"></div>
+            </div>
+
+            <div class="journal-section-wrap">
+              <div class="card-header-row">
+                <span style="font-size:12px; font-weight:800; color:var(--ink-1);">📋 ما سجّلته اليوم</span>
+              </div>
+              <div class="log-list clean-journal-list" id="todayTimelineList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==============================================================
+           MODAL 2: SIMPLE, CALM HUNGER RELIEF SHIELD (درع كبح الجوع الفوري المبسّط)
+           ============================================================== -->
+      <div class="sheet-overlay" id="cravingSheet" onclick="App.backdropClick(event, 'cravingSheet')">
+        <div class="sheet-box craving-sheet-clean">
+          <div class="sheet-grabber"></div>
+
+          <!-- Header -->
+          <div class="craving-clean-header">
+            <div class="card-header-row">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="craving-header-badge">🛡️ فوري</span>
+                <div>
+                  <h3 class="sheet-main-title">درع كبح الجوع والشهية</h3>
+                  <p class="sheet-sub-caption">موجة الجوع مؤقتة وتتلاشى خلال دقائق. اختر حلاً سريعاً:</p>
+                </div>
+              </div>
+              <button class="sheet-close-btn" onclick="App.closeSheet('cravingSheet')" aria-label="إغلاق">✕</button>
+            </div>
+          </div>
+
+          <div class="craving-clean-body">
+            <!-- 1. WATER IMMEDIATE RELIEF -->
+            <div class="craving-action-card water-relief-card">
+              <div class="craving-card-info">
+                <span class="craving-card-emoji">💧</span>
+                <div class="craving-card-texts">
+                  <span class="craving-card-title">اشرب كوبين ماء بارد الآن</span>
+                  <span class="craving-card-sub">يملأ المعدة فوراً ويكسر إشارة الجوع الكاذبة في الدماغ</span>
+                </div>
+              </div>
+              <button type="button" class="craving-quick-btn water-btn" onclick="App.applyHungerWaterAction()">
+                <span>💧 شربت ماء وهدأ الجوع</span>
+                <span class="craving-xp-chip">+50 XP</span>
+              </button>
+            </div>
+
+            <!-- 2. CALMING 10-MINUTE TIMER & BREATHING -->
+            <div class="craving-action-card timer-relief-card">
+              <div class="craving-card-info">
+                <span class="craving-card-emoji">🌊</span>
+                <div class="craving-card-texts">
+                  <span class="craving-card-title">مؤقت كسر الشهية (10 دقائق)</span>
+                  <span class="craving-card-sub" id="breathingGuideText">تنفس بهدوء: شهيق 4 ثوانٍ • زفير 6 ثوانٍ</span>
+                </div>
+              </div>
+
+              <div class="craving-timer-center">
+                <span class="craving-timer-digits num" id="cravingTimerDisplay">10:00</span>
+              </div>
+
+              <div class="craving-timer-actions">
+                <button type="button" class="craving-timer-btn" id="cravingStartBtn" onclick="App.toggleCravingTimer()">
+                  تشغيل المؤقت
+                </button>
+                <button type="button" class="craving-victory-btn" onclick="App.completeCravingVictory()">
+                  <span>هزمت موجة الجوع!</span>
+                  <span class="craving-xp-chip">+100 XP</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. EMERGENCY LOW-CALORIE RESCUE FOODS -->
+            <div class="craving-action-card rescue-relief-card">
+              <div class="craving-card-info">
+                <span class="craving-card-emoji">🥒</span>
+                <div class="craving-card-texts">
+                  <span class="craving-card-title">لو كان جوعك حقيقياً ولابد من الأكل:</span>
+                  <span class="craving-card-sub">أكلات عالية الشبع تسد الجوع بأقل من 85 سعرة</span>
+                </div>
+              </div>
+
+              <div class="craving-rescue-items">
+                <button type="button" class="craving-rescue-row" onclick="App.logQuickRescue('صحن خيار وخس كبير بالليمون', 35, '🥒')">
+                  <span class="rescue-item-name">🥒 صحن خيار وخس كبير بالليمون</span>
+                  <span class="rescue-item-badge num">+35 سعرة</span>
+                </button>
+                <button type="button" class="craving-rescue-row" onclick="App.logQuickRescue('بيضة مسلوقة مع شرائح خيار', 80, '🥚')">
+                  <span class="rescue-item-name">🥚 بيضة مسلوقة مع خيار</span>
+                  <span class="rescue-item-badge num">+80 سعرة</span>
+                </button>
+                <button type="button" class="craving-rescue-row" onclick="App.logQuickRescue('قهوة سوداء أو شاي دافئ سادة', 5, '☕')">
+                  <span class="rescue-item-name">☕ قهوة سوداء أو شاي سادة</span>
+                  <span class="rescue-item-badge num">+5 سعرات</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 4. BIG BOTTOM FINISH: SAVED A MEAL -->
+            <button type="button" class="craving-finish-btn" onclick="App.applyDirectCravingSave()">
+              <span>🛡️ انتصرت على الشهية ووفّرت وجبة كاملة</span>
+              <span class="craving-xp-chip gold-chip">+80 XP</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==============================================================
+           MODAL 3: SETTINGS, DATA EXPORT & UPDATES SHEET (قائمة الثلاث نقاط)
+           ============================================================== -->
+      <div class="sheet-overlay" id="settingsSheet" onclick="App.backdropClick(event, 'settingsSheet')">
+        <div class="sheet-box settings-sheet-clean">
+          <div class="sheet-grabber"></div>
+
+          <!-- Header -->
+          <div class="settings-clean-header">
+            <div class="card-header-row">
+              <div>
+                <h3 class="sheet-main-title">⚙️ إعدادات خِفَّة والبيانات</h3>
+                <p class="sheet-sub-caption">تحكم كامل بمظهر التطبيق، بياناتك، والتحديثات</p>
+              </div>
+              <button class="sheet-close-btn" onclick="App.closeSheet('settingsSheet')" aria-label="إغلاق">✕</button>
+            </div>
+          </div>
+
+          <div class="settings-clean-body">
+            <!-- SECTION 1: APPEARANCE & DYNAMIC LIGHTING -->
+            <div class="settings-group-card">
+              <div class="settings-group-title">🎨 المظهر والإضاءة التفاعلية</div>
+
+              <div class="settings-theme-switcher">
+                <button type="button" class="theme-option-btn active" id="themeOptDark" onclick="App.setThemeMode('dark')">
+                  <span>🌙</span>
+                  <span>الوضع الليلي (الأساسي)</span>
+                </button>
+                <button type="button" class="theme-option-btn" id="themeOptLight" onclick="App.setThemeMode('light')">
+                  <span>☀️</span>
+                  <span>الوضع النهاري</span>
+                </button>
+              </div>
+
+              <div class="settings-toggle-row" onclick="App.toggleAmbientFireLight()">
+                <div class="settings-toggle-info">
+                  <span class="settings-row-title">🔥 تفاعل إضاءة الواجهة مع الشعلة</span>
+                  <span class="settings-row-sub">انعكاس ضوئي لطيف يتنفس ويتحرك مع وهج النار</span>
+                </div>
+                <span class="settings-status-pill on" id="ambientLightStatusPill">مفعّلة</span>
+              </div>
+            </div>
+
+            <!-- SECTION 2: DATA EXPORT & BACKUP -->
+            <div class="settings-group-card">
+              <div class="settings-group-title">📦 تصدير واستيراد البيانات</div>
+              <p class="settings-group-desc">
+                احفظ نسخة احتياطية من سجلاتك، وزنك، ونقاط الـ XP في ملف JSON أو انسخ تقريرك اليومي:
+              </p>
+
+              <div class="settings-actions-grid">
+                <button type="button" class="settings-action-btn primary-glass-btn" onclick="App.exportUserDataJson()">
+                  <span>📥 تصدير ملف البيانات (JSON)</span>
+                </button>
+                <button type="button" class="settings-action-btn secondary-glass-btn" onclick="App.copySummaryReport()">
+                  <span>📋 نسخ ملخص التقدم</span>
+                </button>
+              </div>
+
+              <div class="settings-import-row">
+                <label for="importJsonFileInput" class="settings-import-label">
+                  <span>📤 استيراد ملف نسخة احتياطية سابقة</span>
+                </label>
+                <input
+                  type="file"
+                  id="importJsonFileInput"
+                  accept=".json,application/json"
+                  style="display:none;"
+                  onchange="App.importUserDataJson(event)"
+                />
+              </div>
+            </div>
+
+            <!-- SECTION 3: APP UPDATES CHECKER -->
+            <div class="settings-group-card">
+              <div class="settings-group-title">🔄 تحديثات التطبيق</div>
+              <div class="settings-update-box">
+                <div class="settings-update-info">
+                  <span class="settings-row-title" id="appVersionTitle">الإصدار الحالي: v2.7</span>
+                  <span class="settings-row-sub" id="appUpdateStatusText">جميع مكونات الواجهة وقاعدة الأكلات محدّثة.</span>
+                </div>
+                <button type="button" class="check-update-btn" id="checkUpdateBtn" onclick="App.checkForAppUpdates()">
+                  <span id="checkUpdateBtnIcon">🔄</span>
+                  <span id="checkUpdateBtnLabel">التأكد من التحديثات</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- SECTION 4: METABOLIC CALIBRATION (TDEE & DEFICIT) -->
+            <div class="settings-group-card">
+              <div class="settings-group-title">🧬 معايرة حرق الجسم والهدف</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div class="field-group">
+                  <label class="field-label" for="profHeight">الطول (سم)</label>
+                  <input type="number" id="profHeight" class="field-input num" value="175" />
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="profAge">العمر (سنة)</label>
+                  <input type="number" id="profAge" class="field-input num" value="34" />
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="profGoalWeightInput">الوزن المستهدف (كجم)</label>
+                  <input type="number" id="profGoalWeightInput" class="field-input num" value="95" />
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="profDeficitTarget">خطة العجز اليومي</label>
+                  <select id="profDeficitTarget" class="field-input">
+                    <option value="750">مريح (750 سعرة)</option>
+                    <option value="1000" selected>ذهبي (1000 سعرة)</option>
+                    <option value="1250">مكثف (1250 سعرة)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:2px;">
+                <div class="hero-stat-box">
+                  <span class="stat-box-num" id="profCalculatedTdee">2,950 سعرة</span>
+                  <span class="stat-box-label">حرق جسمك اليومي</span>
+                </div>
+                <div class="hero-stat-box featured">
+                  <span class="stat-box-num" id="profCalculatedTarget">1,950 سعرة</span>
+                  <span class="stat-box-label">ميزانية الأكل اليومية</span>
+                </div>
+              </div>
+
+              <button type="button" class="submit-btn" onclick="App.saveProfileSettings()">حفظ وإعادة حساب الميزانية</button>
+            </div>
+
+            <!-- SECTION 5: RESET CONTROLS -->
+            <div class="settings-group-card">
+              <div class="settings-group-title">🛠️ إدارة السجل اليومي</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
+                <button type="button" class="quick-row-btn" onclick="App.resetToFreshDay()">
+                  <span class="quick-row-title">🔄 تصفير وجبات اليوم</span>
+                </button>
+                <button type="button" class="quick-row-btn" onclick="App.restoreDemoData()">
+                  <span class="quick-row-title">✨ إعادة ضبط المصنع</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==============================================================
+           FIRST-TIME WELCOME ONBOARDING MODAL (تظهر أول مرة فقط!)
+           ============================================================== -->
+      <div class="welcome-overlay" id="welcomeModal" role="dialog" aria-modal="true" aria-labelledby="welcomeModalTitle">
+        <div class="welcome-card">
+          <div class="welcome-glow-orb" aria-hidden="true"></div>
+
+          <div class="welcome-flame-hero" aria-hidden="true">
+            <svg class="flame-svg-anim" viewBox="0 0 32 32" width="44" height="44">
+              <circle class="spark-1" cx="9" cy="7" r="1.6" fill="#FDE047" />
+              <circle class="spark-2" cx="23" cy="9" r="1.4" fill="#FB923C" />
+              <path class="flame-outer" d="M16 2 C21 9 27 13 27 20 C27 26.2 22.1 30 16 30 C9.9 30 5 26.2 5 20 C5 14.5 9.5 10.5 12 6 C12 9.5 14 11 16 2 Z" fill="#EA580C" />
+              <path class="flame-mid" d="M16 7 C19.5 12 23.5 15 23.5 20.5 C23.5 25 20.2 28 16 28 C11.8 28 8.5 25 8.5 20.5 C8.5 16 11.5 13 16 7 Z" fill="#FB923C" />
+              <path class="flame-core" d="M16 13 C18 16.5 20 18.5 20 21.8 C20 24.5 18.2 26.5 16 26.5 C13.8 26.5 12 24.5 12 21.8 C12 18.5 14 16.5 16 13 Z" fill="#FEF08A" />
+            </svg>
+          </div>
+
+          <span class="welcome-pill-tag">✨ أهلاً بك في خِفَّة</span>
+          <h2 class="welcome-title" id="welcomeModalTitle">رحلتك نحو الخِفَّة تبدأ بشعلةٍ واحدة</h2>
+          <p class="welcome-subtitle">
+            رفيقك الذكي لتحويل العجز الحراري وحرق الدهون إلى تجربة يومية مرئية وممتعة بطريقة بصرية بسيطة وممتعة.
+          </p>
+
+          <div class="welcome-features-list">
+            <div class="welcome-feature-item">
+              <div class="welcome-feat-icon flame-tint">🔥</div>
+              <div class="welcome-feat-text">
+                <span class="welcome-feat-name">شعلة وإضاءة تفاعلية حية</span>
+                <span class="welcome-feat-desc">تكبر وتتوهج وتنعكس إضاءتها على الواجهة كلما حافظت على ميزانيتك.</span>
+              </div>
+            </div>
+
+            <div class="welcome-feature-item">
+              <div class="welcome-feat-icon sage-tint">🍽️</div>
+              <div class="welcome-feat-text">
+                <span class="welcome-feat-name">تسجيل فوري للسعرات أو التوفير</span>
+                <span class="welcome-feat-desc">أدخل سعراتك مباشرة أو اختر من الأكلات الجاهزة واكسب نقاط الـ XP.</span>
+              </div>
+            </div>
+
+            <div class="welcome-feature-item">
+              <div class="welcome-feat-icon ocean-tint">🛡️</div>
+              <div class="welcome-feat-text">
+                <span class="welcome-feat-name">درع كبح الجوع المبسّط</span>
+                <span class="welcome-feat-desc">حلول سريعة بنقرة واحدة لكسر الشهية وموجات الجوع في دقائق.</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="welcome-cta-btn" onclick="App.dismissWelcomeModal()">
+            <span>أشعل شعلة الحرق وابدأ الآن</span>
+            <span>🔥</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js?v=3.1"></script>
+</body>
+</html>
