@@ -1,11 +1,11 @@
-const CACHE_NAME = 'khiffa-ios-v4.0-standalone-fix';
+const CACHE_NAME = 'khiffa-ios-v4.1-daily-rollover';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './styles.css?v=4.0',
+  './styles.css?v=4.1',
   './app.js',
-  './app.js?v=4.0',
+  './app.js?v=4.1',
   './manifest.json'
 ];
 

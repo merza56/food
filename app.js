@@ -171,6 +171,24 @@ const HUNGER_RESCUE_FOODS = [
   { id: 'hr5', name: 'علبة زبادي قليل الدسم مع رشة قرفة', portion: 'يرطب المعدة ويضبط سكر الدم', kcal: 95, emoji: '🥣' }
 ];
 
+function getLocalDateKey(d = new Date()) {
+  const yr = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${yr}-${mo}-${day}`;
+}
+
+function parseLocalDateKey(dateKey) {
+  const parts = String(dateKey || '').split('-').map(Number);
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return new Date();
+  return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+}
+
+function getArabicDayName(d = new Date()) {
+  const names = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  return names[d.getDay()] || 'اليوم';
+}
+
 function createDefaultState() {
   return {
     theme: 'dark',
@@ -191,6 +209,7 @@ function createDefaultState() {
       shields: 0
     },
     today: {
+      dateKey: getLocalDateKey(),
       waterGlasses: 0,
       selectedFoodCat: 'breakfast',
       searchQuery: '',
@@ -217,6 +236,7 @@ const App = {
 
   init() {
     this.loadState();
+    const rolledOverOnLaunch = this.checkAndRolloverDay(false);
     this.applyTheme();
     this.updateClock();
     setInterval(() => this.updateClock(), 30000);
@@ -224,6 +244,19 @@ const App = {
     this.renderAll();
     this.renderHungerCenterContent();
     this.checkFirstTimeWelcome();
+
+    if (rolledOverOnLaunch) {
+      setTimeout(() => {
+        this.showToast('🌅 بدأ يوم جديد! تم حفظ إنجاز أمس في التحليل وتصفير عداد اليوم 🔥', '🌅');
+      }, 450);
+    }
+
+    // Automatically check for new day when returning to the app on iOS Home Screen
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) this.checkAndRolloverDay(true);
+    });
+    window.addEventListener('pageshow', () => this.checkAndRolloverDay(true));
+    window.addEventListener('focus', () => this.checkAndRolloverDay(true));
 
     if (location.hash) {
       const t = location.hash.slice(1);
@@ -251,7 +284,7 @@ const App = {
           window.location.reload();
         }
       });
-      navigator.serviceWorker.register('./sw.js?v=4.0').then((reg) => {
+      navigator.serviceWorker.register('./sw.js?v=4.1').then((reg) => {
         if (reg && typeof reg.update === 'function') reg.update().catch(() => {});
       }).catch(() => {});
     }
@@ -310,7 +343,6 @@ const App = {
           this.state.theme = 'dark';
           this.state.ambientFireLight = true;
           localStorage.setItem('khiffa_dark_default_v27', 'true');
-          this.saveState();
         }
         if (typeof this.state.ambientFireLight !== 'boolean') {
           this.state.ambientFireLight = true;
@@ -318,14 +350,12 @@ const App = {
         if (!this.state.theme) {
           this.state.theme = 'dark';
         }
-        if (!this.state.uiStyle) {
-                  }
-        if (typeof this.state.glassTransparency !== 'number') {
-          this.state.glassTransparency = 72;
+        if (!this.state.today) {
+          this.state.today = createDefaultState().today;
         }
-        if (typeof this.state.glassRefraction !== 'number') {
-          this.state.glassRefraction = 70;
-        }
+        // Migrate legacy state that lacked today.dateKey by inspecting entry timestamps
+        this.migrateLegacyTodayDateKey();
+        this.saveState();
       } else {
         this.state = createDefaultState();
         localStorage.setItem('khiffa_dark_default_v27', 'true');
@@ -334,6 +364,180 @@ const App = {
     } catch (e) {
       this.state = createDefaultState();
     }
+  },
+
+  migrateLegacyTodayDateKey() {
+    const todayKey = getLocalDateKey();
+    if (!this.state || !this.state.today) return;
+    const entries = Array.isArray(this.state.today.entries) ? this.state.today.entries : [];
+
+    // Extract calendar dates from entry IDs (e.g., 'e_1794153600000')
+    const oldEntries = [];
+    const currentEntries = [];
+    let detectedOldDateKey = null;
+
+    entries.forEach((entry) => {
+      const m = String(entry && entry.id ? entry.id : '').match(/(\d{12,15})/);
+      if (m) {
+        const ts = Number(m[1]);
+        const dKey = getLocalDateKey(new Date(ts));
+        if (dKey < todayKey) {
+          oldEntries.push(entry);
+          if (!detectedOldDateKey || dKey > detectedOldDateKey) {
+            detectedOldDateKey = dKey;
+          }
+          return;
+        }
+      }
+      currentEntries.push(entry);
+    });
+
+    if (oldEntries.length > 0) {
+      // Some or all entries belong to a previous day: archive old entries first, keep any entries logged today
+      this.state.today.entries = oldEntries;
+      this.state.today.dateKey = detectedOldDateKey;
+      this.checkAndRolloverDay(false);
+      if (currentEntries.length > 0) {
+        this.state.today.entries = currentEntries;
+        this.saveState();
+      }
+      return;
+    }
+
+    if (!this.state.today.dateKey) {
+      const hasLegacyWaterOrQuests =
+        (this.state.today.waterGlasses > 0 ||
+          (Array.isArray(this.state.today.quests) && this.state.today.quests.some((q) => q.done))) &&
+        currentEntries.length === 0;
+      if (hasLegacyWaterOrQuests) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        this.state.today.dateKey = getLocalDateKey(yesterday);
+      } else {
+        this.state.today.dateKey = todayKey;
+      }
+    }
+  },
+
+  checkAndRolloverDay(notifyUser = true) {
+    if (!this.state || !this.state.today) return false;
+    const todayKey = getLocalDateKey();
+    const storedKey = this.state.today.dateKey;
+
+    if (!storedKey) {
+      this.state.today.dateKey = todayKey;
+      this.saveState();
+      return false;
+    }
+
+    if (storedKey === todayKey) {
+      return false;
+    }
+
+    // A new calendar day has started! Archive the previous day into history14d
+    const prevDate = parseLocalDateKey(storedKey);
+    const currDate = parseLocalDateKey(todayKey);
+    const diffDays = Math.max(1, Math.round((currDate - prevDate) / 86400000));
+
+    const m = this.getTodayMetrics();
+    const quests = Array.isArray(this.state.today.quests) ? this.state.today.quests : [];
+    const completedQuestsXp = quests.filter((q) => q.done).reduce((s, q) => s + q.xp, 0);
+    const waterXp = (this.state.today.waterGlasses || 0) * 15;
+    const hadActivity =
+      (Array.isArray(this.state.today.entries) && this.state.today.entries.length > 0) ||
+      (this.state.today.waterGlasses || 0) > 0 ||
+      completedQuestsXp > 0;
+
+    // 1. Permanently bank yesterday's dynamic XP into basePoints so it is never lost on reset
+    if (!this.state.xp) this.state.xp = { basePoints: 0, streakDays: 0, shields: 0 };
+    if (hadActivity) {
+      this.state.xp.basePoints =
+        (this.state.xp.basePoints || 0) + m.deficitXpBonus + completedQuestsXp + waterXp;
+    }
+
+    // 2. Archive the finished day into history14d
+    if (!Array.isArray(this.state.history14d)) this.state.history14d = [];
+    const prevArDay = getArabicDayName(prevDate);
+    const estTrueWeight = +(
+      this.state.profile.currentWeight - (hadActivity ? m.netDeficitFromTdee / 7700 : 0)
+    ).toFixed(2);
+
+    // Avoid duplicate history entry for the same dateKey
+    this.state.history14d = this.state.history14d.filter((h) => h.dateKey !== storedKey);
+    this.state.history14d.push({
+      dateKey: storedKey,
+      dayLabel: prevArDay,
+      arDay: prevArDay,
+      consumed: m.consumedKcal,
+      saved: m.savedBankKcal,
+      active: hadActivity,
+      scaleWeight: this.state.profile.currentWeight,
+      trueWeight: estTrueWeight
+    });
+
+    // 3. Update Streak & Shields
+    if (hadActivity && m.consumedKcal <= this.state.profile.tdee) {
+      this.state.xp.streakDays = (this.state.xp.streakDays || 0) + 1;
+      if (this.state.xp.streakDays > 0 && this.state.xp.streakDays % 3 === 0) {
+        this.state.xp.shields = (this.state.xp.shields || 0) + 1;
+      }
+    } else if (!hadActivity) {
+      if ((this.state.xp.shields || 0) > 0) {
+        this.state.xp.shields -= 1;
+      } else {
+        this.state.xp.streakDays = 0;
+      }
+    }
+
+    // 4. Fill any skipped intermediate days if more than 1 day passed
+    if (diffDays > 1) {
+      const skippedCount = Math.min(13, diffDays - 1);
+      for (let i = 1; i <= skippedCount; i++) {
+        const midDate = new Date(prevDate);
+        midDate.setDate(midDate.getDate() + i);
+        const midKey = getLocalDateKey(midDate);
+        const midArDay = getArabicDayName(midDate);
+        if (!this.state.history14d.some((h) => h.dateKey === midKey)) {
+          this.state.history14d.push({
+            dateKey: midKey,
+            dayLabel: midArDay,
+            arDay: midArDay,
+            consumed: 0,
+            saved: 0,
+            active: false,
+            scaleWeight: this.state.profile.currentWeight,
+            trueWeight: this.state.profile.currentWeight
+          });
+        }
+        if ((this.state.xp.shields || 0) > 0) {
+          this.state.xp.shields -= 1;
+        } else {
+          this.state.xp.streakDays = 0;
+        }
+      }
+    }
+
+    // Keep last 13 completed days (plus today = 14 days)
+    this.state.history14d = this.state.history14d.slice(-13);
+
+    // 5. Reset today's counters, meals, water, and daily quests for the new day
+    this.state.today.dateKey = todayKey;
+    this.state.today.waterGlasses = 0;
+    this.state.today.entries = [];
+    this.state.today.searchQuery = '';
+    if (Array.isArray(this.state.today.quests)) {
+      this.state.today.quests.forEach((q) => {
+        q.done = false;
+      });
+    }
+
+    this.saveState();
+    if (notifyUser) {
+      this.renderAll();
+      this.playFeedback('success');
+      this.showToast('🌅 بدأ يوم جديد! تم حفظ إنجاز أمس في التحليل وتصفير عداد اليوم 🔥', '🌅');
+    }
+    return true;
   },
 
   saveState() {
@@ -398,6 +602,7 @@ const App = {
     const h12 = hrs % 12 || 12;
     const clockEl = document.getElementById('iosClock');
     if (clockEl) clockEl.textContent = `${h12}:${mins}`;
+    this.checkAndRolloverDay(true);
   },
 
   toggleTheme() {
@@ -2148,14 +2353,16 @@ const App = {
     const box = document.getElementById('weeklyDeficitChartBox');
     if (!box) return;
 
-    // Ensure 7 columns are always shown so the chart never looks like an empty black box on day 1
-    const arWeekNames = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'اليوم'];
+    // Ensure 7 columns are always shown with true Arabic weekday names leading up to today
     let paddedDays = [...days7];
     while (paddedDays.length < 7) {
-      const idx = 7 - paddedDays.length - 1;
+      const daysAgo = paddedDays.length;
+      const dObj = new Date();
+      dObj.setDate(dObj.getDate() - daysAgo);
+      const dayName = getArabicDayName(dObj);
       paddedDays.unshift({
-        dayLabel: arWeekNames[idx] || '-',
-        arDay: arWeekNames[idx] || '-',
+        dayLabel: dayName,
+        arDay: dayName,
         consumed: 0,
         saved: 0,
         active: false,
@@ -2548,6 +2755,7 @@ const App = {
 
   resetToFreshDay() {
     this.playFeedback('tap');
+    this.state.today.dateKey = getLocalDateKey();
     this.state.today.entries = [];
     this.state.today.waterGlasses = 0;
     this.state.today.quests.forEach((q) => (q.done = false));
