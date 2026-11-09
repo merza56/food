@@ -228,11 +228,50 @@ function createDefaultState() {
 }
 
 const App = {
+  appVersion: '4.2',
+  whatsNewSeenKey: 'khiffa_whats_new_seen_version',
+  releaseNotes: {
+    version: 'v4.2',
+    badge: '🎉 تحديث جديد • الإصدار v4.2',
+    title: 'ما الجديد في تحديث خِفَّة؟',
+    subtitle: 'تم تحديث تطبيقك بنجاح! إليك أبرز الميزات والتحسينات المضافة في هذا الإصدار:',
+    features: [
+      {
+        icon: '🌅',
+        tint: 'flame-tint',
+        tag: 'جديد',
+        name: 'التحديث التلقائي عند بدء يوم جديد',
+        desc: 'تصفير عدادات اليوم والماء والمهام تلقائياً عند منتصف الليل، مع حفظ نقاط الـ XP وسلسلة الالتزام وأرشفة إنجاز الأمس في التحليل.'
+      },
+      {
+        icon: '✨',
+        tint: 'sage-tint',
+        tag: 'جديد',
+        name: 'ملخص الميزات الجديدة بعد كل تحديث',
+        desc: 'تظهر هذه البطاقة تلقائياً مرة واحدة فقط بعد كل تحديث لتعرض لك أحدث الميزات والتحسينات فور نزولها.'
+      },
+      {
+        icon: '📱',
+        tint: 'ocean-tint',
+        tag: 'تحسين',
+        name: 'ضبط كامل لشاشة الآيفون الرئيسية (PWA)',
+        desc: 'معالجة المسافات العلوية والسفلية لتظهر جميع البطاقات وشريط التنقل بوضوح تام دون اختفاء أو فراغات زائدة.'
+      },
+      {
+        icon: '🔥',
+        tint: 'flame-tint',
+        tag: 'تحسين',
+        name: 'شعلة حرق دهون تفاعلية بلا حواف',
+        desc: 'تدرج لوني حي للشعلة يتفاعل مع سعراتك اليومية مع قطرات دهون تذوب وتتبخر داخل اللهب.'
+      }
+    ]
+  },
   state: null,
   activeTab: 'today',
   cravingTimerInterval: null,
   cravingSecondsLeft: 600,
   audioCtx: null,
+  _hadStoredStateOnLaunch: false,
 
   init() {
     this.loadState();
@@ -243,7 +282,8 @@ const App = {
     this.initFireEngine();
     this.renderAll();
     this.renderHungerCenterContent();
-    this.checkFirstTimeWelcome();
+    this.renderWhatsNewContent();
+    this.checkFirstTimeOrUpdateModal();
 
     if (rolledOverOnLaunch) {
       setTimeout(() => {
@@ -266,6 +306,8 @@ const App = {
         this.openFoodHub('gulf');
       } else if (t === 'hungercenter') {
         this.openHungerCenter();
+      } else if (t === 'whatsnew') {
+        this.openWhatsNewModal(true);
       } else if (t === 'fire_heavy') {
         this.previewFireIntake('heavy');
       } else if (t === 'fire_over') {
@@ -284,7 +326,7 @@ const App = {
           window.location.reload();
         }
       });
-      navigator.serviceWorker.register('./sw.js?v=4.1').then((reg) => {
+      navigator.serviceWorker.register('./sw.js?v=4.2').then((reg) => {
         if (reg && typeof reg.update === 'function') reg.update().catch(() => {});
       }).catch(() => {});
     }
@@ -304,21 +346,102 @@ const App = {
     window.addEventListener('focusout', () => setTimeout(resetWindowScroll, 60), { passive: true });
   },
 
-  checkFirstTimeWelcome() {
+  renderWhatsNewContent() {
+    const rel = this.releaseNotes;
+    if (!rel) return;
+
+    const verTitleEl = document.getElementById('appVersionTitle');
+    if (verTitleEl) verTitleEl.textContent = `الإصدار الحالي: ${rel.version}`;
+
+    const badgeEl = document.getElementById('whatsNewBadge');
+    if (badgeEl) badgeEl.textContent = rel.badge;
+
+    const titleEl = document.getElementById('whatsNewModalTitle');
+    if (titleEl) titleEl.textContent = rel.title;
+
+    const subEl = document.getElementById('whatsNewSubtitle');
+    if (subEl) subEl.textContent = rel.subtitle;
+
+    const listEl = document.getElementById('whatsNewFeaturesList');
+    if (listEl && Array.isArray(rel.features)) {
+      listEl.innerHTML = rel.features
+        .map(
+          (f) => `
+          <div class="welcome-feature-item">
+            <div class="welcome-feat-icon ${f.tint || 'sage-tint'}">${f.icon}</div>
+            <div class="welcome-feat-text" style="flex:1;">
+              <div class="whatsnew-feat-header">
+                <span class="welcome-feat-name">${f.name}</span>
+                ${f.tag ? `<span class="whatsnew-feat-tag">${f.tag}</span>` : ''}
+              </div>
+              <span class="welcome-feat-desc">${f.desc}</span>
+            </div>
+          </div>
+        `
+        )
+        .join('');
+    }
+  },
+
+  checkFirstTimeOrUpdateModal() {
     try {
-      const seen = localStorage.getItem('khiffa_welcome_seen_v1');
-      if (!seen) {
-        const modal = document.getElementById('welcomeModal');
-        if (modal) {
-          setTimeout(() => modal.classList.add('open'), 120);
+      const seenWelcome = localStorage.getItem('khiffa_welcome_seen_v1');
+      const seenUpdateVer = localStorage.getItem(this.whatsNewSeenKey);
+
+      // Brand-new first-time user who has never used the app before
+      if (!seenWelcome && !this._hadStoredStateOnLaunch) {
+        const welcomeModal = document.getElementById('welcomeModal');
+        if (welcomeModal) {
+          setTimeout(() => welcomeModal.classList.add('open'), 120);
+        }
+        return;
+      }
+
+      // Existing user (or user who already saw welcome): show What's New ONCE per version update
+      if (!seenWelcome) {
+        localStorage.setItem('khiffa_welcome_seen_v1', 'true');
+      }
+      if (seenUpdateVer !== this.appVersion) {
+        const whatsNewModal = document.getElementById('whatsNewModal');
+        if (whatsNewModal) {
+          setTimeout(() => whatsNewModal.classList.add('open'), 160);
         }
       }
     } catch (e) {}
   },
 
+  openWhatsNewModal(fromSettings = false) {
+    if (fromSettings) {
+      this.closeSheet('settingsSheet');
+    }
+    this.playFeedback('tap');
+    this.renderWhatsNewContent();
+    const modal = document.getElementById('whatsNewModal');
+    if (modal) {
+      setTimeout(() => modal.classList.add('open'), fromSettings ? 120 : 20);
+    }
+  },
+
+  dismissWhatsNewModal() {
+    try {
+      localStorage.setItem(this.whatsNewSeenKey, this.appVersion);
+      localStorage.setItem('khiffa_welcome_seen_v1', 'true');
+    } catch (e) {}
+    const modal = document.getElementById('whatsNewModal');
+    if (modal) {
+      modal.classList.remove('open');
+    }
+    this.playFeedback('success');
+    if (this.fireEngine && this.fireEngine.spawnBurst) {
+      this.fireEngine.spawnBurst(18);
+    }
+    this.showToast(`تم التحديث إلى الإصدار v${this.appVersion} بنجاح ✨`, '🚀');
+  },
+
   dismissWelcomeModal() {
     try {
       localStorage.setItem('khiffa_welcome_seen_v1', 'true');
+      localStorage.setItem(this.whatsNewSeenKey, this.appVersion);
     } catch (e) {}
     const modal = document.getElementById('welcomeModal');
     if (modal) {
@@ -338,6 +461,7 @@ const App = {
       localStorage.removeItem('khiffa_ios_state_v3');
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
+        this._hadStoredStateOnLaunch = true;
         this.state = JSON.parse(raw);
         if (!localStorage.getItem('khiffa_dark_default_v27')) {
           this.state.theme = 'dark';

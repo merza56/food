@@ -3920,5 +3920,97 @@ input[type="range"].clean-slider::-webkit-slider-thumb {
   }
 }
 
+/* ==========================================================================
+   WHAT'S NEW / RELEASE NOTES MODAL (تظهر مرة واحدة تلقائياً بعد كل تحديث)
+   ========================================================================== */
+.whatsnew-overlay {
+  z-index: 165;
+}
+
+.whatsnew-card {
+  max-height: 86dvh;
+  padding: 20px 18px 18px;
+  gap: 8px;
+}
+
+.whatsnew-glow-orb {
+  background: radial-gradient(circle, rgba(52, 168, 114, 0.26) 0%, rgba(56, 152, 236, 0.12) 55%, transparent 75%);
+}
+
+.whatsnew-hero-badge {
+  width: 60px;
+  height: 60px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(52, 168, 114, 0.22) 0%, rgba(56, 152, 236, 0.18) 100%);
+  border: 1.5px solid var(--sage-border);
+  box-shadow: 0 10px 24px rgba(52, 168, 114, 0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  position: relative;
+  z-index: 2;
+}
+
+.whatsnew-pill-tag {
+  color: var(--sage);
+  background: var(--sage-light);
+  border-color: var(--sage-border);
+}
+
+.whatsnew-features-list {
+  max-height: 44dvh;
+  overflow-y: auto;
+  padding-left: 2px;
+  scrollbar-width: none;
+}
+
+.whatsnew-features-list::-webkit-scrollbar {
+  display: none;
+}
+
+.whatsnew-feat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.whatsnew-feat-tag {
+  font-size: 8.8px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--sage-light);
+  color: var(--sage);
+  border: 1px solid var(--sage-border);
+  flex-shrink: 0;
+}
+
+.whatsnew-cta-btn {
+  background: linear-gradient(135deg, var(--sage) 0%, #208758 100%);
+  box-shadow: 0 8px 22px rgba(52, 168, 114, 0.30);
+}
+
+.settings-whatsnew-btn {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: var(--sage-light);
+  border: 1px solid var(--sage-border);
+  color: var(--sage);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: transform 0.15s ease;
+}
+
+.settings-whatsnew-btn:active {
+  transform: scale(0.98);
+}
+
+
 
 

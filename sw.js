@@ -1,12 +1,13 @@
-const CACHE_NAME = 'khiffa-ios-v4.1-daily-rollover';
+const CACHE_NAME = 'khiffa-ios-v4.2-whats-new';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './styles.css?v=4.1',
+  './styles.css?v=4.2',
   './app.js',
-  './app.js?v=4.1',
-  './manifest.json'
+  './app.js?v=4.2',
+  './manifest.json',
+  './manifest.json?v=4.2'
 ];
 
 self.addEventListener('install', (event) => {

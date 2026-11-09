@@ -10,13 +10,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="خِفَّة" />
   <meta name="theme-color" content="#111714" />
-  <link rel="manifest" href="./manifest.json?v=4.0" />
+  <link rel="manifest" href="./manifest.json?v=4.2" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Readex+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="./styles.css?v=4.0" />
+  <link rel="stylesheet" href="./styles.css?v=4.2" />
 </head>
 <body>
 
@@ -916,10 +916,10 @@
 
             <!-- SECTION 3: APP UPDATES CHECKER -->
             <div class="settings-group-card">
-              <div class="settings-group-title">🔄 تحديثات التطبيق</div>
+              <div class="settings-group-title">🔄 تحديثات التطبيق وسجل الميزات</div>
               <div class="settings-update-box">
                 <div class="settings-update-info">
-                  <span class="settings-row-title" id="appVersionTitle">الإصدار الحالي: v2.7</span>
+                  <span class="settings-row-title" id="appVersionTitle">الإصدار الحالي: v4.2</span>
                   <span class="settings-row-sub" id="appUpdateStatusText">جميع مكونات الواجهة وقاعدة الأكلات محدّثة.</span>
                 </div>
                 <button type="button" class="check-update-btn" id="checkUpdateBtn" onclick="App.checkForAppUpdates()">
@@ -927,6 +927,10 @@
                   <span id="checkUpdateBtnLabel">التأكد من التحديثات</span>
                 </button>
               </div>
+              <button type="button" class="settings-whatsnew-btn" onclick="App.openWhatsNewModal(true)">
+                <span>✨ عرض الميزات الجديدة في هذا التحديث (v4.2)</span>
+                <span>←</span>
+              </button>
             </div>
 
             <!-- SECTION 4: METABOLIC CALIBRATION (TDEE & DEFICIT) -->
@@ -1040,9 +1044,35 @@
           </button>
         </div>
       </div>
+
+      <!-- ==============================================================
+           WHAT'S NEW / RELEASE NOTES MODAL (تظهر تلقائياً مرة واحدة بعد كل تحديث!)
+           ============================================================== -->
+      <div class="welcome-overlay whatsnew-overlay" id="whatsNewModal" role="dialog" aria-modal="true" aria-labelledby="whatsNewModalTitle" onclick="if(event.target.id==='whatsNewModal') App.dismissWhatsNewModal()">
+        <div class="welcome-card whatsnew-card">
+          <div class="welcome-glow-orb whatsnew-glow-orb" aria-hidden="true"></div>
+
+          <div class="whatsnew-hero-badge" aria-hidden="true">
+            <span>🚀</span>
+          </div>
+
+          <span class="welcome-pill-tag whatsnew-pill-tag" id="whatsNewBadge">🎉 تحديث جديد • الإصدار v4.2</span>
+          <h2 class="welcome-title" id="whatsNewModalTitle">ما الجديد في تحديث خِفَّة؟</h2>
+          <p class="welcome-subtitle" id="whatsNewSubtitle">
+            تم تحديث تطبيقك بنجاح! إليك أبرز الميزات والتحسينات التي أُضيفت في هذا الإصدار:
+          </p>
+
+          <div class="welcome-features-list whatsnew-features-list" id="whatsNewFeaturesList"></div>
+
+          <button type="button" class="welcome-cta-btn whatsnew-cta-btn" onclick="App.dismissWhatsNewModal()">
+            <span>رائع! استكشف التحديث الآن</span>
+            <span>✨</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script src="./app.js?v=4.1"></script>
+  <script src="./app.js?v=4.2"></script>
 </body>
 </html>
